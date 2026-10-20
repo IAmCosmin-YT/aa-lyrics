@@ -43,8 +43,8 @@ class OutputRouteMonitor(context: Context) {
 
     private fun mediaDevices(): List<AudioDeviceInfo> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            audioManager.getDevicesForAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
-                .mapNotNull { attr -> audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.type == attr.type } }
+            // The devices media is actually routed to right now.
+            audioManager.getAudioDevicesForAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
         } else {
             audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
         }
