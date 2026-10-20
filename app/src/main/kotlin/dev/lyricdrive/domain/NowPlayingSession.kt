@@ -14,6 +14,7 @@ import dev.lyricdrive.core.sync.LyricsTimeline
 import dev.lyricdrive.core.sync.PlaybackClock
 import dev.lyricdrive.core.sync.SyncEngine
 import dev.lyricdrive.core.sync.withWordHighlight
+import dev.lyricdrive.data.audio.OutputRoute
 import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.media.ObservedPlayer
 import dev.lyricdrive.data.net.ConnectivityObserver
@@ -44,6 +45,7 @@ class NowPlayingSession(
     connectivity: ConnectivityObserver,
     private val artworkLoader: ArtworkLoader,
     settings: SettingsRepository,
+    outputRoute: StateFlow<OutputRoute>,
     scope: CoroutineScope,
 ) {
     val clock = ElapsedClock(SystemClock::elapsedRealtime)
@@ -87,12 +89,13 @@ class NowPlayingSession(
 
     private val settingsRepository = settings
 
-    /** Total lyric offset: global audio delay + this song's nudge. Positive = lyrics later. */
-    val offsetMs: StateFlow<Long> = combine(
-        settings.settings.map { it.audioDelayMs }.distinctUntilChanged(),
-        track,
-        settings.songOffsets,
-    ) { delay, track, offsets ->
+    /** Audio delay for the current output route (falls back to the global value). */
+    val routeDelayMs: StateFlow<Int> = combine(settings.settings, outputRoute) { prefs, route ->
+        prefs.routeDelaysMs[route.name] ?: prefs.audioDelayMs
+    }.stateIn(scope, SharingStarted.Eagerly, 0)
+
+    /** Total lyric offset: route audio delay + this song's nudge. Positive = lyrics later. */
+    val offsetMs: StateFlow<Long> = combine(routeDelayMs, track, settings.songOffsets) { delay, track, offsets ->
         delay + (track?.let { offsets[TrackNormalizer.cacheKey(it)] } ?: 0L)
     }.stateIn(scope, SharingStarted.Eagerly, 0L)
 

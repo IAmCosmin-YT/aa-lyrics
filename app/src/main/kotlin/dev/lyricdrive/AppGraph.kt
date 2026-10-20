@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import dev.lyricdrive.core.domain.LyricsPipeline
 import dev.lyricdrive.core.domain.LyricsRepository
+import dev.lyricdrive.data.audio.OutputRouteMonitor
 import dev.lyricdrive.data.embedded.EmbeddedLyricsSource
 import dev.lyricdrive.data.local.LyricsDatabase
 import dev.lyricdrive.data.local.RoomLyricsCache
@@ -11,6 +12,8 @@ import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.net.ConnectivityObserver
 import dev.lyricdrive.data.remote.BetterLyricsSource
 import dev.lyricdrive.data.remote.LrclibClient
+import dev.lyricdrive.data.remote.LyricsPlusSource
+import dev.lyricdrive.data.remote.UnisonSource
 import dev.lyricdrive.data.remote.LrclibLyricsSource
 import dev.lyricdrive.data.sensors.AmbientLightMonitor
 import dev.lyricdrive.data.settings.SettingsRepository
@@ -24,7 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 class AppGraph(app: Application) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    // v2 clears the cache once so songs cached line-only can pick up word-synced lyrics.
+    // Schema bumps clear the cache once so songs cached line-only can pick up word-synced sources.
     private val database = Room.databaseBuilder(app, LyricsDatabase::class.java, "lyrics.db")
         .fallbackToDestructiveMigration()
         .build()
@@ -37,11 +40,16 @@ class AppGraph(app: Application) {
 
     val ambientLight = AmbientLightMonitor(app)
 
+    val outputRoute = OutputRouteMonitor(app)
+
     private val repository = LyricsRepository(
         cache = RoomLyricsCache(database.lyricsDao()),
-        // Priority: cache (inside the repository) → BetterLyrics (word-synced TTML) → LRCLIB → embedded tags.
+        // Priority: cache (inside the repository) → word-synced sources (BetterLyrics, Unison, optional
+        // LyricsPlus) → LRCLIB → embedded tags. A line-synced hit keeps looking for word timing.
         sources = listOf(
             BetterLyricsSource(userAgent),
+            UnisonSource(userAgent),
+            LyricsPlusSource(userAgent) { settings.settings.value.lyricsPlusServer },
             LrclibLyricsSource(LrclibClient(userAgent)),
             EmbeddedLyricsSource(app),
         ),
@@ -53,6 +61,7 @@ class AppGraph(app: Application) {
         connectivity = ConnectivityObserver(app),
         artworkLoader = ArtworkLoader(app),
         settings = settings,
+        outputRoute = outputRoute.route,
         scope = appScope,
     )
 }

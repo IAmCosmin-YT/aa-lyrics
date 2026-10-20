@@ -84,6 +84,12 @@ enum class NightMode {
     NEVER,
 }
 
+/**
+ * binimum's LyricsPlus server: the default server of his am-lyrics web component, which is published
+ * for anyone to embed. Users can point this at a self-hosted server instead, or clear it.
+ */
+const val DEFAULT_LYRICS_PLUS_SERVER = "https://lyricsplus.binimum.org"
+
 data class LyricSettings(
     val wordHighlight: WordHighlight = WordHighlight.AUTO,
     val animationStyle: AnimationStyle = AnimationStyle.BEAUTIFUL,
@@ -94,6 +100,10 @@ data class LyricSettings(
     val fullScreenWhenParked: Boolean = true,
     /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
     val audioDelayMs: Int = 0,
+    /** Optional LyricsPlus server base URL (empty = disabled). */
+    val lyricsPlusServer: String = DEFAULT_LYRICS_PLUS_SERVER,
+    /** Audio delay per output route; overrides [audioDelayMs] for that route. */
+    val routeDelaysMs: Map<String, Int> = emptyMap(),
 )
 
 /** User preferences, persisted in SharedPreferences and exposed as one flow. */
@@ -113,6 +123,8 @@ class SettingsRepository(context: Context) {
             .putString(KEY_HIGHLIGHT, next.highlightColor.name)
             .putBoolean(KEY_FULL_SCREEN_PARKED, next.fullScreenWhenParked)
             .putInt(KEY_AUDIO_DELAY, next.audioDelayMs)
+            .putString(KEY_LYRICS_PLUS, next.lyricsPlusServer)
+            .putString(KEY_ROUTE_DELAYS, next.routeDelaysMs.entries.joinToString(",") { "${it.key}=${it.value}" })
             .apply()
         _settings.value = next
     }
@@ -128,6 +140,11 @@ class SettingsRepository(context: Context) {
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),
             audioDelayMs = prefs.getInt(KEY_AUDIO_DELAY, 0),
+            lyricsPlusServer = prefs.getString(KEY_LYRICS_PLUS, null) ?: DEFAULT_LYRICS_PLUS_SERVER,
+            routeDelaysMs = prefs.getString(KEY_ROUTE_DELAYS, "").orEmpty().split(',').mapNotNull { entry ->
+                val (k, v) = entry.split('=').takeIf { it.size == 2 } ?: return@mapNotNull null
+                v.toIntOrNull()?.let { k to it }
+            }.toMap(),
         )
     }
 
@@ -154,5 +171,7 @@ class SettingsRepository(context: Context) {
         const val KEY_HIGHLIGHT = "highlight_color"
         const val KEY_FULL_SCREEN_PARKED = "full_screen_parked"
         const val KEY_AUDIO_DELAY = "audio_delay_ms"
+        const val KEY_LYRICS_PLUS = "lyrics_plus_server"
+        const val KEY_ROUTE_DELAYS = "route_delays"
     }
 }

@@ -27,6 +27,7 @@ class BetterLyricsSource(
     private val baseUrl: String = "https://lyrics-api.boidu.dev",
 ) : LyricsSource {
     override val name = "BetterLyrics"
+    override val providesWordTiming = true
 
     override suspend fun fetch(track: TrackMetadata): SourceResult = withContext(Dispatchers.IO) {
         val queries = TrackNormalizer.queries(track).let { all -> listOfNotNull(all.getOrNull(1), all.firstOrNull()).distinct() }

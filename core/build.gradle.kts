@@ -19,6 +19,9 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.coroutines.core)
+    // org.json ships with Android; only needed on the classpath for compiling and JVM tests.
+    compileOnly(libs.org.json)
+    testImplementation(libs.org.json)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

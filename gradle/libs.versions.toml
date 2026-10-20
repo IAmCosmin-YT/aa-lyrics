@@ -13,6 +13,7 @@ room = "2.6.1"
 palette = "1.0.0"
 dynamicAnimation = "1.0.0"
 junit = "4.13.2"
+orgJson = "20240303"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -39,6 +40,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-palette = { module = "androidx.palette:palette-ktx", version.ref = "palette" }
 androidx-dynamicanimation = { module = "androidx.dynamicanimation:dynamicanimation", version.ref = "dynamicAnimation" }
 junit = { module = "junit:junit", version.ref = "junit" }
+org-json = { module = "org.json:json", version.ref = "orgJson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -60,8 +60,9 @@ app/    (Android)
   ui            Compose phone UI: FluidBackground, KaraokeText, LyricsScreen, onboarding
 ```
 
-**Lyrics priority:** Room cache → BetterLyrics (`lyrics-api.boidu.dev`, word-synced TTML, then
-its KuGou endpoint) → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
+**Lyrics priority:** Room cache → word-synced sources: BetterLyrics (`lyrics-api.boidu.dev`, TTML,
+then its KuGou endpoint), Unison (`unison.boidu.dev`), LyricsPlus (configurable; defaults to
+binimum's server used by his am-lyrics component) → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
 duration; then `/api/search` ranked by similarity/duration/sync) → embedded tags (local files).
 Offline lookups show title + artist with an "offline" notice and retry automatically when the
 network comes back.
@@ -102,7 +103,8 @@ identical on Android Auto. The settings screen has a live preview at the top.
   LRC — otherwise estimated), Real only, Off. The header shows which one you're seeing.
 - **Brightness:** Auto (car night signal / phone dark mode), Light sensor (phone sensor: day, dim
   for tunnels/overcast, night), Always dark, Always bright.
-- **Sync:** global audio delay (Bluetooth / Android Auto lag) plus per-song nudges from the sync
+- **Sync:** audio delay saved per output (Android Auto, Bluetooth, wired, speaker — detected
+  automatically) plus per-song nudges from the sync
   button on the lyrics screen. Line-synced lyrics get word timing estimated from syllables at a
   rate measured per song.
 - **Android Auto → Full screen when parked:** the cover panel slides in and all lines show when

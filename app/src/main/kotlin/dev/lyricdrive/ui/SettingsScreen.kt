@@ -29,7 +29,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,7 +58,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.lyricdrive.LyricDriveApp
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
+import dev.lyricdrive.data.audio.OutputRoute
 import dev.lyricdrive.data.settings.AnimationStyle
+import dev.lyricdrive.data.settings.DEFAULT_LYRICS_PLUS_SERVER
 import dev.lyricdrive.data.settings.BackgroundMode
 import dev.lyricdrive.data.settings.HighlightColor
 import dev.lyricdrive.data.settings.NightMode
@@ -165,16 +169,36 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Segmented(WORD_CHOICES, settings.wordHighlight) { v -> update { it.copy(wordHighlight = v) } }
                 }
                 Section(R.string.section_sync) {
+                    val route by vm.outputRoute.collectAsStateWithLifecycle()
+                    val delay by vm.routeDelayMs.collectAsStateWithLifecycle()
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.audio_delay), color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text(formatOffset(settings.audioDelayMs.toLong()), color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.audio_delay), color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.audio_delay_route, stringResource(routeLabel(route))), color = Muted, fontSize = 12.sp)
+                        }
+                        Text(formatOffset(delay.toLong()), color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
                     Slider(
-                        value = settings.audioDelayMs.toFloat(),
-                        onValueChange = { v -> update { it.copy(audioDelayMs = (Math.round(v / 25f) * 25)) } },
+                        value = delay.toFloat(),
+                        onValueChange = { v -> vm.setRouteDelay(Math.round(v / 25f) * 25) },
                         valueRange = -500f..1000f,
                     )
                     Text(stringResource(R.string.audio_delay_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+                }
+                Section(R.string.section_sources) {
+                    Text(stringResource(R.string.sources_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = settings.lyricsPlusServer,
+                        onValueChange = { v -> update { it.copy(lyricsPlusServer = v.trim()) } },
+                        label = { Text(stringResource(R.string.lyrics_plus_server)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                        TextButton(onClick = { update { it.copy(lyricsPlusServer = DEFAULT_LYRICS_PLUS_SERVER) } }) { Text(stringResource(R.string.reset), color = Color.White) }
+                        TextButton(onClick = { update { it.copy(lyricsPlusServer = "") } }) { Text(stringResource(R.string.disable), color = Color.White) }
+                    }
                 }
                 Section(R.string.section_night) {
                     Segmented(NIGHT_CHOICES, settings.nightMode) { v -> update { it.copy(nightMode = v) } }
@@ -392,4 +416,11 @@ fun formatOffset(ms: Long): String = when {
     ms > 0 -> "+$ms ms"
     ms < 0 -> "−${-ms} ms"
     else -> "0 ms"
+}
+
+private fun routeLabel(route: OutputRoute): Int = when (route) {
+    OutputRoute.ANDROID_AUTO -> R.string.route_android_auto
+    OutputRoute.BLUETOOTH -> R.string.route_bluetooth
+    OutputRoute.WIRED -> R.string.route_wired
+    OutputRoute.SPEAKER -> R.string.route_speaker
 }

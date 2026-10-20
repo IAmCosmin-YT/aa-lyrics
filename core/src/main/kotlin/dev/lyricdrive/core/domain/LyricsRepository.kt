@@ -17,6 +17,10 @@ sealed interface SourceResult {
 /** A lyrics provider (network API, embedded tags, ...). */
 interface LyricsSource {
     val name: String
+
+    /** Sources that can return per-word timing; consulted even after a line-synced hit. */
+    val providesWordTiming: Boolean get() = false
+
     suspend fun fetch(track: TrackMetadata): SourceResult
 }
 
@@ -36,6 +40,8 @@ sealed interface LyricsResult {
 
 /**
  * Priority fallback: cache → sources in order. Hits are written through to the cache.
+ * A hit without word timing doesn't end the search while later sources may still have word
+ * timing; the best (word-synced) result wins, else the first line-synced one.
  * Confirmed misses are cached for [negativeTtlMs] so we don't re-query every replay, but a miss
  * caused by a transient error is never cached, so it gets retried when the network returns.
  */
@@ -54,7 +60,9 @@ class LyricsRepository(
         }
 
         var transientError: Throwable? = null
-        for (source in sources) {
+        var lineSynced: Pair<RawLyrics, Lyrics>? = null
+        for ((index, source) in sources.withIndex()) {
+            if (lineSynced != null && !source.providesWordTiming) continue
             val result = try {
                 source.fetch(track)
             } catch (e: CancellationException) {
@@ -65,19 +73,31 @@ class LyricsRepository(
             when (result) {
                 is SourceResult.Hit -> {
                     val lyrics = toLyrics(result.lyrics, track) ?: continue
-                    runCatching { cache.put(track, result.lyrics, nowMs()) }
-                    return LyricsResult.Found(lyrics)
+                    val wordSynced = (lyrics as? Lyrics.Synced)?.hasWordTiming == true
+                    val laterWordSources = sources.drop(index + 1).any { it.providesWordTiming }
+                    if (wordSynced || lyrics !is Lyrics.Synced || !laterWordSources) {
+                        if (!wordSynced && lineSynced != null) return found(track, lineSynced)
+                        runCatching { cache.put(track, result.lyrics, nowMs()) }
+                        return LyricsResult.Found(lyrics)
+                    }
+                    if (lineSynced == null) lineSynced = result.lyrics to lyrics
                 }
                 SourceResult.Miss -> Unit
                 is SourceResult.Error -> if (result.retryable) transientError = result.cause
             }
         }
 
+        lineSynced?.let { return found(track, it) }
         if (transientError != null) {
             return LyricsResult.Unavailable(transientError.message ?: transientError::class.simpleName.orEmpty())
         }
         runCatching { cache.put(track, null, nowMs()) }
         return LyricsResult.NotFound
+    }
+
+    private suspend fun found(track: TrackMetadata, hit: Pair<RawLyrics, Lyrics>): LyricsResult {
+        runCatching { cache.put(track, hit.first, nowMs()) }
+        return LyricsResult.Found(hit.second)
     }
 
     companion object {

@@ -43,6 +43,16 @@ class LyricsViewModel(app: Application) : AndroidViewModel(app) {
         NowPlayingUi(track, lyrics, timeline, snapshot, artwork, palette, energy)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUi())
 
+    private val graph = (app as LyricDriveApp).graph
+
+    /** Output route currently playing (Android Auto, Bluetooth, ...) and its audio delay. */
+    val outputRoute = graph.outputRoute.route
+    val routeDelayMs: StateFlow<Int> = nowPlaying.routeDelayMs
+
+    fun setRouteDelay(ms: Int) = settingsRepository.update { s ->
+        s.copy(routeDelaysMs = s.routeDelaysMs + (outputRoute.value.name to ms))
+    }
+
     /** Current total lyric offset and this song's own nudge. */
     val offsetMs: StateFlow<Long> = nowPlaying.offsetMs
     fun songOffsetMs(): Long = nowPlaying.songOffsetMs()

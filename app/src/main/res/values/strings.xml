@@ -81,7 +81,6 @@
     <string name="anim_typewriter_desc">Letters appear one by one behind a cursor</string>
     <string name="section_sync">Sync</string>
     <string name="audio_delay">Audio delay</string>
-    <string name="audio_delay_desc">Bluetooth and Android Auto play audio a little late (often 100–300 ms). If lyrics run ahead of the singer, raise this. Per-song fine-tuning is under the sync button on the lyrics screen.</string>
     <string name="song_sync">Sync this song</string>
     <string name="lyrics_earlier">Earlier</string>
     <string name="lyrics_later">Later</string>
@@ -89,4 +88,14 @@
     <string name="anim_beautiful">Beautiful</string>
     <string name="anim_beautiful_desc">Syllables swell, lift and glow as they\'re sung; long notes go letter by letter</string>
     <string name="bg_cover_blend">Cover blend</string>
+    <string name="audio_delay_desc">Each output lags differently: Android Auto and Bluetooth often play 100–300 ms late. If lyrics run ahead of the singer, raise this. It\'s saved separately for each output and applies automatically. Per-song fine-tuning is under the sync button on the lyrics screen.</string>
+    <string name="audio_delay_route">For: %1$s (current output)</string>
+    <string name="route_android_auto">Android Auto</string>
+    <string name="route_bluetooth">Bluetooth</string>
+    <string name="route_wired">Wired / USB</string>
+    <string name="route_speaker">Phone speaker</string>
+    <string name="section_sources">Lyrics sources</string>
+    <string name="sources_desc">Word-by-word timing comes from BetterLyrics, Unison and LyricsPlus, then LRCLIB (line timing) and lyrics embedded in local files. LyricsPlus uses the server below; you can point it at your own.</string>
+    <string name="lyrics_plus_server">LyricsPlus server</string>
+    <string name="disable">Disable</string>
 </resources>
