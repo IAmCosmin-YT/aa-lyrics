@@ -30,23 +30,30 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
@@ -59,6 +66,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -84,11 +92,17 @@ private val LyricStyle = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWei
 fun LyricsScreen(vm: LyricsViewModel) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val following by vm.following.collectAsStateWithLifecycle()
+    val wordSync by vm.wordSync.collectAsStateWithLifecycle()
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+
+    if (showSettings) {
+        SettingsDialog(wordSync = wordSync, onWordSyncChange = vm::setWordSync, onDismiss = { showSettings = false })
+    }
 
     Box(Modifier.fillMaxSize()) {
         FluidBackground(ui.palette, ui.energy, ui.snapshot.isPlaying)
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Header(ui)
+            Header(ui, onSettings = { showSettings = true })
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (val state = ui.lyrics) {
                     LyricsState.Idle -> CenterMessage(stringResource(R.string.nothing_playing), stringResource(R.string.nothing_playing_hint))
@@ -317,23 +331,57 @@ private fun CenterMessage(title: String, subtitle: String) {
 }
 
 @Composable
-private fun Header(ui: NowPlayingUi) {
-    val track = ui.track ?: return
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        ui.artwork?.let { art ->
-            Image(
-                bitmap = remember(art) { art.asImageBitmap() },
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)),
-            )
-            Spacer(Modifier.width(12.dp))
+private fun Header(ui: NowPlayingUi, onSettings: () -> Unit) {
+    val track = ui.track
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (track != null) {
+            ui.artwork?.let { art ->
+                Image(
+                    bitmap = remember(art) { art.asImageBitmap() },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)),
+                )
+                Spacer(Modifier.width(12.dp))
+            }
         }
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (track != null) {
+                Text(track.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.artist, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        IconButton(onClick = onSettings, modifier = Modifier.size(56.dp)) {
+            Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.settings), tint = Color.White)
         }
     }
+}
+
+@Composable
+private fun SettingsDialog(wordSync: Boolean, onWordSyncChange: (Boolean) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
+        title = { Text(stringResource(R.string.settings)) },
+        text = {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .toggleable(value = wordSync, role = Role.Switch, onValueChange = onWordSyncChange)
+                    .heightIn(min = 64.dp)
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.setting_word_sync), fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.setting_word_sync_desc), fontSize = 13.sp, color = Color.White.copy(alpha = 0.7f))
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(checked = wordSync, onCheckedChange = null)
+            }
+        },
+    )
 }
 
 @Composable

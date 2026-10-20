@@ -15,6 +15,7 @@ import dev.lyricdrive.core.sync.SyncEngine
 import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.media.ObservedPlayer
 import dev.lyricdrive.data.net.ConnectivityObserver
+import dev.lyricdrive.data.settings.SettingsRepository
 import dev.lyricdrive.ui.theme.AlbumPaletteExtractor
 import dev.lyricdrive.ui.theme.LyricPalette
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -39,6 +41,7 @@ class NowPlayingSession(
     pipeline: LyricsPipeline,
     connectivity: ConnectivityObserver,
     private val artworkLoader: ArtworkLoader,
+    settings: SettingsRepository,
     scope: CoroutineScope,
 ) {
     val clock = ElapsedClock(SystemClock::elapsedRealtime)
@@ -53,8 +56,13 @@ class NowPlayingSession(
     val lyrics: StateFlow<LyricsState> = pipeline.states(track, connectivity.online)
         .stateIn(scope, SharingStarted.Eagerly, LyricsState.Idle)
 
-    val timeline: StateFlow<LyricsTimeline> = lyrics
+    private val fullTimeline: Flow<LyricsTimeline> = lyrics
         .map { state -> ((state as? LyricsState.Ready)?.lyrics as? Lyrics.Synced)?.let { LyricsTimeline(it.lines) } ?: LyricsTimeline.EMPTY }
+
+    /** Timeline used by every renderer; word timings are stripped when word sync is turned off. */
+    val timeline: StateFlow<LyricsTimeline> = combine(fullTimeline, settings.wordSync) { timeline, wordSync ->
+        if (wordSync) timeline else timeline.withoutWordTiming()
+    }
         .stateIn(scope, SharingStarted.Eagerly, LyricsTimeline.EMPTY)
 
     val energy: StateFlow<Float> = timeline

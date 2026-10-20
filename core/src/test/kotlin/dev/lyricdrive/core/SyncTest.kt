@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SyncTest {
@@ -51,6 +52,14 @@ class SyncTest {
         assertEquals(4f, timeline.filledCharacters(0, 4_000), 0.001f)
         // Line-synced: fully lit once active
         assertEquals(6f, timeline.filledCharacters(1, 5_001), 0.001f)
+    }
+
+    @Test
+    fun `word timing can be turned off`() {
+        val lineOnly = timeline.withoutWordTiming()
+        assertEquals(4f, lineOnly.filledCharacters(0, 1_000), 0.001f)
+        assertEquals(timeline.lines.map { it.text }, lineOnly.lines.map { it.text })
+        assertTrue(lineOnly.withoutWordTiming() === lineOnly)
     }
 
     @Test

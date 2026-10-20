@@ -20,4 +20,8 @@
     <string name="previous">Previous</string>
     <string name="mirror_root_title">Now playing with lyrics</string>
     <string name="car_resume">Follow</string>
+    <string name="settings">Settings</string>
+    <string name="done">Done</string>
+    <string name="setting_word_sync">Word-by-word highlight</string>
+    <string name="setting_word_sync_desc">Fill each word as it\'s sung when the lyrics include word timing. Off: whole lines light up at once.</string>
 </resources>

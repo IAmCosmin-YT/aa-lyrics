@@ -62,6 +62,10 @@ class LyricsTimeline(val lines: List<LyricLine>) {
         return starts.getOrNull(next)
     }
 
+    /** Same lines with word timings dropped, so every line lights up whole when it becomes active. */
+    fun withoutWordTiming(): LyricsTimeline =
+        if (lines.none { it.hasWordTiming }) this else LyricsTimeline(lines.map { it.copy(words = emptyList()) })
+
     companion object {
         val EMPTY = LyricsTimeline(emptyList())
     }

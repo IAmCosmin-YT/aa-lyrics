@@ -11,6 +11,7 @@ import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.net.ConnectivityObserver
 import dev.lyricdrive.data.remote.LrclibClient
 import dev.lyricdrive.data.remote.LrclibLyricsSource
+import dev.lyricdrive.data.settings.SettingsRepository
 import dev.lyricdrive.domain.ArtworkLoader
 import dev.lyricdrive.domain.NowPlayingSession
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,8 @@ class AppGraph(app: Application) {
     private val database = Room.databaseBuilder(app, LyricsDatabase::class.java, "lyrics.db").build()
 
     val sessionObserver = MediaSessionObserver(app)
+
+    val settings = SettingsRepository(app)
 
     private val repository = LyricsRepository(
         cache = RoomLyricsCache(database.lyricsDao()),
@@ -39,6 +42,7 @@ class AppGraph(app: Application) {
         pipeline = LyricsPipeline(repository, debounceMs = 400),
         connectivity = ConnectivityObserver(app),
         artworkLoader = ArtworkLoader(app),
+        settings = settings,
         scope = appScope,
     )
 }

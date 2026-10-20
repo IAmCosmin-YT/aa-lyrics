@@ -32,6 +32,10 @@ data class NowPlayingUi(
 
 class LyricsViewModel(app: Application) : AndroidViewModel(app) {
     private val nowPlaying = (app as LyricDriveApp).graph.nowPlaying
+    private val settings = (app as LyricDriveApp).graph.settings
+
+    val wordSync: StateFlow<Boolean> = settings.wordSync
+    fun setWordSync(enabled: Boolean) = settings.setWordSync(enabled)
 
     val ui: StateFlow<NowPlayingUi> = combine(
         combine(nowPlaying.track, nowPlaying.lyrics, nowPlaying.timeline, ::Triple),
