@@ -2,6 +2,7 @@ package dev.lyricdrive.ui
 
 import android.graphics.Rect
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -22,9 +24,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -82,11 +88,13 @@ fun LyricsScreen(vm: LyricsViewModel, onOpenSettings: () -> Unit) {
         }
     }
     val area = remember { Rect() }
+    var showSync by rememberSaveable { mutableStateOf(false) }
+    val offset by vm.offsetMs.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
         LyricsCanvas(controller, Modifier.fillMaxSize(), lyricsArea = { area })
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Header(ui, timingBadge(ui.lyrics, settings.wordHighlight), onSettings = onOpenSettings)
+            Header(ui, timingBadge(ui.lyrics, settings.wordHighlight), onSync = { showSync = !showSync }, onSettings = onOpenSettings)
             Box(
                 Modifier
                     .weight(1f)
@@ -114,6 +122,9 @@ fun LyricsScreen(vm: LyricsViewModel, onOpenSettings: () -> Unit) {
                         }
                     },
             )
+            if (showSync && ui.track != null) {
+                SyncBar(songOffset = remember(offset) { vm.songOffsetMs() }, onNudge = vm::nudgeSongOffset, onReset = vm::resetSongOffset)
+            }
             Controls(ui.snapshot.isPlaying, vm::skipToPrevious, vm::togglePlayPause, vm::skipToNext)
         }
     }
@@ -134,7 +145,7 @@ private fun timingBadge(state: LyricsState, mode: WordHighlight): String? {
 }
 
 @Composable
-private fun Header(ui: NowPlayingUi, badge: String?, onSettings: () -> Unit) {
+private fun Header(ui: NowPlayingUi, badge: String?, onSync: () -> Unit, onSettings: () -> Unit) {
     val track = ui.track
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (track != null) {
@@ -155,8 +166,44 @@ private fun Header(ui: NowPlayingUi, badge: String?, onSettings: () -> Unit) {
                 badge?.let { Text(it, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1) }
             }
         }
+        if (track != null) {
+            IconButton(onClick = onSync, modifier = Modifier.size(56.dp)) {
+                Icon(painterResource(R.drawable.ic_sync), stringResource(R.string.song_sync), tint = Color.White)
+            }
+        }
         IconButton(onClick = onSettings, modifier = Modifier.size(56.dp)) {
             Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.settings), tint = Color.White)
+        }
+    }
+}
+
+/** Per-song fine-tuning: shift this song's lyrics earlier or later in 100 ms steps. */
+@Composable
+private fun SyncBar(songOffset: Long, onNudge: (Long) -> Unit, onReset: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        TextButton(onClick = { onNudge(-100) }, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("− " + stringResource(R.string.lyrics_earlier), color = Color.White)
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(formatOffset(songOffset), color = Color.White, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.song_sync), color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+        }
+        TextButton(onClick = { onNudge(100) }, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.lyrics_later) + " +", color = Color.White)
+        }
+        if (songOffset != 0L) {
+            TextButton(onClick = onReset, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.reset), color = Color.White.copy(alpha = 0.8f))
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,14 +81,11 @@ private val WORD_CHOICES = listOf(
 private val ANIMATION_CHOICES = listOf(
     Choice(AnimationStyle.FLUID, R.string.anim_fluid, R.string.anim_fluid_desc),
     Choice(AnimationStyle.KARAOKE, R.string.anim_karaoke, R.string.anim_karaoke_desc),
-    Choice(AnimationStyle.WAVE, R.string.anim_wave, R.string.anim_wave_desc),
+    Choice(AnimationStyle.BOUNCING_BALL, R.string.anim_ball, R.string.anim_ball_desc),
     Choice(AnimationStyle.TYPEWRITER, R.string.anim_typewriter, R.string.anim_typewriter_desc),
-    Choice(AnimationStyle.FOCUS, R.string.anim_focus, R.string.anim_focus_desc),
-    Choice(AnimationStyle.BOUNCY, R.string.anim_bouncy, R.string.anim_bouncy_desc),
     Choice(AnimationStyle.CINEMATIC, R.string.anim_cinematic, R.string.anim_cinematic_desc),
     Choice(AnimationStyle.GLANCE, R.string.anim_glance, R.string.anim_glance_desc),
     Choice(AnimationStyle.SINGLE_LINE, R.string.anim_single, R.string.anim_single_desc),
-    Choice(AnimationStyle.MINIMAL, R.string.anim_minimal, R.string.anim_minimal_desc),
 )
 
 private val THEME_CHOICES = listOf(
@@ -95,11 +93,6 @@ private val THEME_CHOICES = listOf(
     Choice(BackgroundMode.ALBUM_ART, R.string.bg_album_art),
     Choice(BackgroundMode.ALBUM_GRADIENT, R.string.bg_album_gradient),
     Choice(BackgroundMode.SPECTRUM, R.string.bg_spectrum),
-    Choice(BackgroundMode.AURORA, R.string.bg_aurora),
-    Choice(BackgroundMode.SUNSET, R.string.bg_sunset),
-    Choice(BackgroundMode.OCEAN, R.string.bg_ocean),
-    Choice(BackgroundMode.NEBULA, R.string.bg_nebula),
-    Choice(BackgroundMode.SYNTHWAVE, R.string.bg_synthwave),
     Choice(BackgroundMode.LOFI, R.string.bg_lofi),
     Choice(BackgroundMode.DISCO, R.string.bg_disco),
     Choice(BackgroundMode.BLACK, R.string.bg_black),
@@ -168,6 +161,18 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                 }
                 Section(R.string.section_word) {
                     Segmented(WORD_CHOICES, settings.wordHighlight) { v -> update { it.copy(wordHighlight = v) } }
+                }
+                Section(R.string.section_sync) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.audio_delay), color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Text(formatOffset(settings.audioDelayMs.toLong()), color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                    Slider(
+                        value = settings.audioDelayMs.toFloat(),
+                        onValueChange = { v -> update { it.copy(audioDelayMs = (Math.round(v / 25f) * 25)) } },
+                        valueRange = -500f..1000f,
+                    )
+                    Text(stringResource(R.string.audio_delay_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
                 }
                 Section(R.string.section_night) {
                     Segmented(NIGHT_CHOICES, settings.nightMode) { v -> update { it.copy(nightMode = v) } }
@@ -378,4 +383,11 @@ private fun CheckBadge(modifier: Modifier) {
     Box(modifier.size(22.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
         Icon(painterResource(R.drawable.ic_check), null, tint = Color.Black, modifier = Modifier.size(14.dp))
     }
+}
+
+/** "+150 ms" / "−300 ms" / "0 ms". */
+fun formatOffset(ms: Long): String = when {
+    ms > 0 -> "+$ms ms"
+    ms < 0 -> "−${-ms} ms"
+    else -> "0 ms"
 }

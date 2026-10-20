@@ -12,7 +12,17 @@ import dev.lyricdrive.ui.theme.LyricPalette
 
 enum class LayoutKind { LIST, CINEMATIC, GLANCE, SINGLE_LINE }
 
-enum class WordEffect { NONE, WAVE, TYPEWRITER, FLARE }
+enum class WordEffect {
+    NONE,
+    /** Sung words float up a little; long held notes swell and glow. */
+    LIFT,
+    /** Bouncing ball hopping between words. */
+    BALL,
+    /** Letters appear one by one behind a cursor. */
+    TYPEWRITER,
+    /** Neon flare on each newly sung word (disco theme). */
+    FLARE,
+}
 
 /** Everything that differs between animation styles. Shared by the phone and the car renderer. */
 data class LyricStyleSpec(
@@ -32,23 +42,22 @@ data class LyricStyleSpec(
     val springDamping: Float? = 0.82f,
     val springStiffness: Float = 200f,
     val wordEffect: WordEffect = WordEffect.NONE,
-    /** Conical light on the active line, heavy shadow above and below. */
-    val spotlight: Boolean = false,
+    /** Dark outline around the text (classic karaoke). */
+    val outline: Boolean = false,
+    /** Width of the soft edge at the fill front, in dp. */
+    val featherDp: Float = 16f,
     /** Duration of line transitions in focused layouts. */
     val transitionMs: Long = 450,
 )
 
 fun AnimationStyle.spec(): LyricStyleSpec = when (this) {
-    AnimationStyle.FLUID -> LyricStyleSpec(blurPerStepDp = 1.5f)
-    AnimationStyle.KARAOKE -> LyricStyleSpec(inactiveScale = 1f, nearAlpha = 0.6f, farAlpha = 0.6f, activeDimAlpha = 0.95f, glow = false, accentFill = true, springDamping = 1f, springStiffness = 400f)
-    AnimationStyle.FOCUS -> LyricStyleSpec(activeScale = 1.06f, inactiveScale = 0.8f, nearAlpha = 0.15f, farAlpha = 0.06f, blurPerStepDp = 3f, activeDimAlpha = 0.35f, springDamping = 0.9f, springStiffness = 120f, spotlight = true)
-    AnimationStyle.BOUNCY -> LyricStyleSpec(activeScale = 1.04f, inactiveScale = 0.88f, springDamping = 0.45f, springStiffness = 300f)
-    AnimationStyle.WAVE -> LyricStyleSpec(inactiveScale = 0.88f, blurPerStepDp = 1f, springDamping = 0.8f, springStiffness = 220f, wordEffect = WordEffect.WAVE)
+    AnimationStyle.FLUID -> LyricStyleSpec(blurPerStepDp = 1.5f, wordEffect = WordEffect.LIFT, featherDp = 22f)
+    AnimationStyle.KARAOKE -> LyricStyleSpec(inactiveScale = 1f, nearAlpha = 0.6f, farAlpha = 0.6f, activeDimAlpha = 1f, glow = false, accentFill = true, springDamping = 1f, springStiffness = 400f, outline = true, featherDp = 4f)
+    AnimationStyle.BOUNCING_BALL -> LyricStyleSpec(inactiveScale = 0.9f, activeDimAlpha = 0.55f, glow = false, accentFill = true, springDamping = 0.85f, springStiffness = 250f, wordEffect = WordEffect.BALL, featherDp = 10f)
     AnimationStyle.TYPEWRITER -> LyricStyleSpec(inactiveScale = 0.9f, activeDimAlpha = 0f, glow = false, springDamping = 1f, springStiffness = 1500f, wordEffect = WordEffect.TYPEWRITER)
-    AnimationStyle.CINEMATIC -> LyricStyleSpec(layout = LayoutKind.CINEMATIC, springDamping = 0.9f, springStiffness = 250f, transitionMs = 500)
-    AnimationStyle.GLANCE -> LyricStyleSpec(layout = LayoutKind.GLANCE, activeDimAlpha = 0.6f, glow = false, springDamping = null, transitionMs = 90)
-    AnimationStyle.SINGLE_LINE -> LyricStyleSpec(layout = LayoutKind.SINGLE_LINE, transitionMs = 250)
-    AnimationStyle.MINIMAL -> LyricStyleSpec(inactiveScale = 1f, activeDimAlpha = 0.5f, glow = false, springDamping = null)
+    AnimationStyle.CINEMATIC -> LyricStyleSpec(layout = LayoutKind.CINEMATIC, springDamping = 0.9f, springStiffness = 250f, transitionMs = 500, featherDp = 20f)
+    AnimationStyle.GLANCE -> LyricStyleSpec(layout = LayoutKind.GLANCE, activeDimAlpha = 0.6f, glow = false, springDamping = null, transitionMs = 90, featherDp = 10f)
+    AnimationStyle.SINGLE_LINE -> LyricStyleSpec(layout = LayoutKind.SINGLE_LINE, transitionMs = 250, featherDp = 18f)
 }
 
 /** Per-theme look: palette, typography and accents. */
@@ -58,31 +67,21 @@ data class ThemeSpec(
     val scrim: Float,
     /** Default fill color when highlight is Auto; null = white / style accent. */
     val highlight: Int? = null,
-    /** RGB split on the sung text (synthwave). */
-    val chromatic: Boolean = false,
     /** Neon flare on each newly sung word (disco). */
     val flare: Boolean = false,
 )
 
 private val BOLD = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-private val MONO = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
 private val SERIF = Typeface.create(Typeface.SERIF, Typeface.BOLD)
 
 fun BackgroundMode.theme(): ThemeSpec = when (this) {
-    BackgroundMode.SYNTHWAVE -> ThemeSpec(MONO, scrim = 0.12f, highlight = 0xFF5CF6FF.toInt(), chromatic = true)
     BackgroundMode.LOFI -> ThemeSpec(SERIF, scrim = 0.18f, highlight = 0xFFFFE3B0.toInt())
     BackgroundMode.DISCO -> ThemeSpec(BOLD, scrim = 0.18f, flare = true)
-    BackgroundMode.NEBULA -> ThemeSpec(BOLD, scrim = 0.1f)
     BackgroundMode.BLACK -> ThemeSpec(BOLD, scrim = 0f)
     else -> ThemeSpec(BOLD, scrim = 0.38f)
 }
 
 object PresetPalettes {
-    val AURORA = LyricPalette(0xFF19C3A6.toInt(), 0xFF3A2C9E.toInt(), 0xFF7CF2C4.toInt(), 0xFF050B1C.toInt())
-    val SUNSET = LyricPalette(0xFFFF6A3D.toInt(), 0xFFB0245C.toInt(), 0xFFFFC15E.toInt(), 0xFF1E0710.toInt())
-    val OCEAN = LyricPalette(0xFF1F7AE0.toInt(), 0xFF0B3D6E.toInt(), 0xFF4FD1E8.toInt(), 0xFF020C18.toInt())
-    val NEBULA = LyricPalette(0xFF3B3FA8.toInt(), 0xFF0B1640.toInt(), 0xFF7B5BD6.toInt(), 0xFF04050F.toInt())
-    val SYNTHWAVE = LyricPalette(0xFFFF2E97.toInt(), 0xFF6B1FB1.toInt(), 0xFF18E6FF.toInt(), 0xFF0B0420.toInt())
     val LOFI = LyricPalette(0xFFC8803C.toInt(), 0xFF7A4424.toInt(), 0xFFF2C18D.toInt(), 0xFF1E120A.toInt())
     val DISCO = LyricPalette(0xFFFF2BD6.toInt(), 0xFF7A2BFF.toInt(), 0xFF18F0FF.toInt(), 0xFF07020F.toInt())
     val BLACK = LyricPalette(0xFF000000.toInt(), 0xFF000000.toInt(), 0xFFFFFFFF.toInt(), 0xFF000000.toInt())
@@ -93,11 +92,6 @@ object PresetPalettes {
 
 fun BackgroundMode.palette(album: LyricPalette): LyricPalette = when (this) {
     BackgroundMode.ALBUM_FLUID, BackgroundMode.ALBUM_ART, BackgroundMode.ALBUM_GRADIENT, BackgroundMode.SPECTRUM -> album
-    BackgroundMode.AURORA -> PresetPalettes.AURORA
-    BackgroundMode.SUNSET -> PresetPalettes.SUNSET
-    BackgroundMode.OCEAN -> PresetPalettes.OCEAN
-    BackgroundMode.NEBULA -> PresetPalettes.NEBULA
-    BackgroundMode.SYNTHWAVE -> PresetPalettes.SYNTHWAVE
     BackgroundMode.LOFI -> PresetPalettes.LOFI
     BackgroundMode.DISCO -> PresetPalettes.DISCO
     BackgroundMode.BLACK -> PresetPalettes.BLACK

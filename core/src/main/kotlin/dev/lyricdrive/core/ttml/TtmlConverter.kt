@@ -18,6 +18,12 @@ import org.xml.sax.InputSource
  * - Lines without spans become line-synced.
  */
 object TtmlConverter {
+    private const val TTM_NS = "http://www.w3.org/ns/ttml#metadata"
+
+    /** `<body dur="...">` when present: lets callers reject a different recording. */
+    fun durationMs(ttml: String): Long? =
+        Regex("""<body[^>]*\sdur="([^"]+)"""").find(ttml)?.groupValues?.get(1)?.let(::parseTime)
+
     fun toEnhancedLrc(ttml: String): String? {
         val doc = try {
             DocumentBuilderFactory.newInstance().apply {
@@ -52,7 +58,7 @@ object TtmlConverter {
                     }
                     Node.ELEMENT_NODE -> {
                         val el = node as Element
-                        if (el.localName == "span" && el.getAttributeNS("*", "role").ifEmpty { el.getAttribute("ttm:role") } == "x-bg") return
+                        if (el.localName == "span" && el.getAttributeNS(TTM_NS, "role").ifEmpty { el.getAttribute("ttm:role") } == "x-bg") return
                         val begin = if (el.localName == "span") parseTime(el.getAttribute("begin")) else null
                         if (begin != null) {
                             if (pendingSpace && words.isNotEmpty()) words.last().text += " "
@@ -90,6 +96,8 @@ object TtmlConverter {
             when {
                 v.endsWith("ms") -> v.removeSuffix("ms").toDouble().toLong()
                 v.endsWith("s") && !v.contains(':') -> (v.removeSuffix("s").toDouble() * 1000).toLong()
+                v.endsWith("m") && !v.contains(':') -> (v.removeSuffix("m").toDouble() * 60_000).toLong()
+                v.endsWith("h") && !v.contains(':') -> (v.removeSuffix("h").toDouble() * 3_600_000).toLong()
                 v.contains(':') -> {
                     val parts = v.split(':')
                     var seconds = 0.0

@@ -20,14 +20,13 @@ import dev.lyricdrive.data.settings.BackgroundMode
 import dev.lyricdrive.ui.theme.LyricPalette
 import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
  * Draws every background theme onto a plain [Canvas]. Soft layers (blobs, clouds, artwork, EQ
- * silhouette) go through a GPU Gaussian blur on API 31+ hardware canvases; crisp layers (stars,
- * grid, scanlines, grain) are drawn on top unblurred.
+ * silhouette) go through a GPU Gaussian blur on API 31+ hardware canvases; crisp layers
+ * (spotlights, scanlines, grain, vinyl) are drawn on top unblurred.
  */
 class BackgroundPainter(private val density: Float) {
 
@@ -68,10 +67,9 @@ class BackgroundPainter(private val density: Float) {
         // Soft layer (blurred).
         softLayer(canvas, input) { c ->
             when (input.mode) {
-                BackgroundMode.BLACK, BackgroundMode.SYNTHWAVE -> Unit
+                BackgroundMode.BLACK -> Unit
                 BackgroundMode.ALBUM_GRADIENT -> gradient(c, w, h, input.palette)
                 BackgroundMode.ALBUM_ART -> if (!artwork(c, w, h, input)) blobs(c, w, h, input.time, input.palette.blobColors(), 220)
-                BackgroundMode.NEBULA -> blobs(c, w, h, input.time * 0.5f, input.palette.blobColors(), 130)
                 BackgroundMode.LOFI -> blobs(c, w, h, input.time * 0.6f, input.palette.blobColors(), 150)
                 BackgroundMode.DISCO -> discoBlobs(c, w, h, input)
                 BackgroundMode.SPECTRUM -> {
@@ -84,8 +82,6 @@ class BackgroundPainter(private val density: Float) {
 
         // Crisp layer.
         when (input.mode) {
-            BackgroundMode.NEBULA -> stars(canvas, w, h, input.time)
-            BackgroundMode.SYNTHWAVE -> synthwave(canvas, w, h, input)
             BackgroundMode.LOFI -> lofi(canvas, w, h, input)
             BackgroundMode.DISCO -> discoOverlay(canvas, w, h, input)
             else -> Unit
@@ -195,74 +191,6 @@ class BackgroundPainter(private val density: Float) {
     }
 
     // ------------------------------------------------------------------ crisp layers
-
-    private val starField: FloatArray by lazy {
-        val r = Random(7)
-        FloatArray(140 * 4) { i ->
-            when (i % 4) {
-                0, 1 -> r.nextFloat()
-                2 -> 0.5f + r.nextFloat() * 1.1f // radius dp
-                else -> 0.25f + r.nextFloat() * 0.65f // alpha
-            }
-        }
-    }
-
-    private fun stars(c: Canvas, w: Float, h: Float, t: Float) {
-        val s = starField
-        paint.color = Color.WHITE
-        for (i in 0 until s.size / 4) {
-            val twinkle = if (i % 9 == 0) 0.6f + 0.4f * sin(t * 2f + i) else 1f
-            paint.alpha = (255 * s[i * 4 + 3] * twinkle).toInt()
-            c.drawCircle(s[i * 4] * w, s[i * 4 + 1] * h, s[i * 4 + 2] * density, paint)
-        }
-    }
-
-    private fun synthwave(c: Canvas, w: Float, h: Float, input: Input) {
-        val horizon = h * 0.62f
-        val p = input.palette
-        // Sky.
-        paint.shader = LinearGradient(0f, 0f, 0f, horizon, intArrayOf(p.deep, p.secondary, p.primary), floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP)
-        c.drawRect(0f, 0f, w, horizon, paint)
-        // Striped sun sitting on the horizon.
-        val sunR = h * 0.22f
-        val cx = w * 0.5f
-        paint.shader = LinearGradient(0f, horizon - sunR, 0f, horizon, 0xFFFFD86B.toInt(), p.primary, Shader.TileMode.CLAMP)
-        c.save()
-        c.clipRect(0f, 0f, w, horizon)
-        c.drawCircle(cx, horizon, sunR, paint)
-        paint.shader = null
-        paint.color = p.secondary
-        for (k in 0 until 5) {
-            val y = horizon - sunR * (0.08f + k * 0.13f)
-            c.drawRect(cx - sunR, y, cx + sunR, y + sunR * (0.025f + k * 0.012f), paint)
-        }
-        c.restore()
-        // Ground and grid.
-        paint.color = p.deep
-        c.drawRect(0f, horizon, w, h, paint)
-        val gridColor = p.primary
-        for (pass in 0..1) {
-            strokePaint.color = gridColor
-            strokePaint.alpha = if (pass == 0) 60 else 200
-            strokePaint.strokeWidth = (if (pass == 0) 4f else 1.3f) * density
-            val lines = 14
-            for (k in -lines..lines) {
-                val bottomX = cx + k * w / 7f
-                c.drawLine(cx + k * w * 0.012f, horizon, bottomX, h, strokePaint)
-            }
-            val scroll = (input.time * 0.6f) % 1f
-            for (i in 0 until 12) {
-                val d = ((i + scroll) / 12f).pow(2.2f)
-                val y = horizon + (h - horizon) * d
-                c.drawLine(0f, y, w, y, strokePaint)
-            }
-        }
-        // Horizon glow line.
-        strokePaint.color = p.accent
-        strokePaint.alpha = 220
-        strokePaint.strokeWidth = 2f * density
-        c.drawLine(0f, horizon, w, horizon, strokePaint)
-    }
 
     private var grainShader: BitmapShader? = null
     private var vinylShader: SweepGradient? = null

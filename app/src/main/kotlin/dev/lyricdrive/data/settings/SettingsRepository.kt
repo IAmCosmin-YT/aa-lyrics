@@ -8,22 +8,16 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** How lines move and look as playback advances. */
 enum class AnimationStyle {
-    /** Scaled-down, blurred neighbours, soft spring scroll. */
+    /** Apple-Music-like: soft gradient wipe, sung words lift and held notes glow; blurred neighbours. */
     FLUID,
 
-    /** Classic karaoke: flat list, the sung part fills in the album accent color. */
+    /** Classic karaoke: outlined text, the sung part wipes in the accent color. */
     KARAOKE,
 
-    /** Spotlight beam on the active line; everything else falls into shadow. */
-    FOCUS,
+    /** A ball hops from word to word, landing on each one as it's sung. */
+    BOUNCING_BALL,
 
-    /** Bouncy springs: lines pop in with overshoot. */
-    BOUNCY,
-
-    /** Words rise a few dp as they're sung, then settle back like a ripple. */
-    WAVE,
-
-    /** Words snap in as they're sung, led by a cursor block. */
+    /** Letters appear one by one as they're sung, led by a blinking cursor. */
     TYPEWRITER,
 
     /** Two subtitle lines in the lower third; the finished line drifts up and dissolves. */
@@ -35,8 +29,6 @@ enum class AnimationStyle {
     /** Only the current line, centered, with a thin progress bar. */
     SINGLE_LINE,
 
-    /** No motion: instant scroll, no scaling or blur. Least distracting. */
-    MINIMAL,
 }
 
 enum class BackgroundMode {
@@ -48,17 +40,6 @@ enum class BackgroundMode {
 
     /** Still gradient in album-art colors. */
     ALBUM_GRADIENT,
-
-    /** Fixed palettes with fluid motion, independent of the cover. */
-    AURORA,
-    SUNSET,
-    OCEAN,
-
-    /** Deep-space indigo with drifting clouds and static stars. */
-    NEBULA,
-
-    /** 80s grid plane scrolling toward a neon horizon. */
-    SYNTHWAVE,
 
     /** Warm sepia, film grain, breathing vignette and a spinning record. */
     LOFI,
@@ -105,6 +86,8 @@ data class LyricSettings(
     val highlightColor: HighlightColor = HighlightColor.AUTO,
     /** Android Auto: expand to the full-screen layout (cover panel + all lines) when parked. */
     val fullScreenWhenParked: Boolean = true,
+    /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
+    val audioDelayMs: Int = 0,
 )
 
 /** User preferences, persisted in SharedPreferences and exposed as one flow. */
@@ -123,6 +106,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_NIGHT, next.nightMode.name)
             .putString(KEY_HIGHLIGHT, next.highlightColor.name)
             .putBoolean(KEY_FULL_SCREEN_PARKED, next.fullScreenWhenParked)
+            .putInt(KEY_AUDIO_DELAY, next.audioDelayMs)
             .apply()
         _settings.value = next
     }
@@ -137,7 +121,19 @@ class SettingsRepository(context: Context) {
             nightMode = enumOr(KEY_NIGHT, NightMode.AUTO),
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),
+            audioDelayMs = prefs.getInt(KEY_AUDIO_DELAY, 0),
         )
+    }
+
+    private val offsetPrefs = context.getSharedPreferences("song_offsets", Context.MODE_PRIVATE)
+    private val _songOffsets = MutableStateFlow(offsetPrefs.all.mapNotNull { (k, v) -> (v as? Long)?.let { k to it } }.toMap())
+
+    /** Per-song lyric offsets in ms, keyed by the normalized track key. */
+    val songOffsets: StateFlow<Map<String, Long>> = _songOffsets.asStateFlow()
+
+    fun setSongOffset(key: String, offsetMs: Long) {
+        if (offsetMs == 0L) offsetPrefs.edit().remove(key).apply() else offsetPrefs.edit().putLong(key, offsetMs).apply()
+        _songOffsets.value = if (offsetMs == 0L) _songOffsets.value - key else _songOffsets.value + (key to offsetMs)
     }
 
     private inline fun <reified E : Enum<E>> enumOr(key: String, default: E): E =
@@ -151,5 +147,6 @@ class SettingsRepository(context: Context) {
         const val KEY_NIGHT = "night_mode"
         const val KEY_HIGHLIGHT = "highlight_color"
         const val KEY_FULL_SCREEN_PARKED = "full_screen_parked"
+        const val KEY_AUDIO_DELAY = "audio_delay_ms"
     }
 }

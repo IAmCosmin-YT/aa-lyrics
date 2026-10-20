@@ -9,6 +9,7 @@ import dev.lyricdrive.data.local.LyricsDatabase
 import dev.lyricdrive.data.local.RoomLyricsCache
 import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.net.ConnectivityObserver
+import dev.lyricdrive.data.remote.BetterLyricsSource
 import dev.lyricdrive.data.remote.LrclibClient
 import dev.lyricdrive.data.remote.LrclibLyricsSource
 import dev.lyricdrive.data.sensors.AmbientLightMonitor
@@ -23,7 +24,12 @@ import kotlinx.coroutines.SupervisorJob
 class AppGraph(app: Application) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val database = Room.databaseBuilder(app, LyricsDatabase::class.java, "lyrics.db").build()
+    // v2 clears the cache once so songs cached line-only can pick up word-synced lyrics.
+    private val database = Room.databaseBuilder(app, LyricsDatabase::class.java, "lyrics.db")
+        .fallbackToDestructiveMigration()
+        .build()
+
+    private val userAgent = "LyricDrive/${BuildConfig.VERSION_NAME} (https://github.com/IAmCosmin-YT/aa-lyrics)"
 
     val sessionObserver = MediaSessionObserver(app)
 
@@ -33,9 +39,10 @@ class AppGraph(app: Application) {
 
     private val repository = LyricsRepository(
         cache = RoomLyricsCache(database.lyricsDao()),
-        // Priority: cache (inside the repository) → LRCLIB → embedded tags.
+        // Priority: cache (inside the repository) → BetterLyrics (word-synced TTML) → LRCLIB → embedded tags.
         sources = listOf(
-            LrclibLyricsSource(LrclibClient(userAgent = "LyricDrive/${BuildConfig.VERSION_NAME} (https://github.com/IAmCosmin-YT/aa-lyrics)")),
+            BetterLyricsSource(userAgent),
+            LrclibLyricsSource(LrclibClient(userAgent)),
             EmbeddedLyricsSource(app),
         ),
     )

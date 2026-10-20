@@ -43,6 +43,12 @@ class LyricsViewModel(app: Application) : AndroidViewModel(app) {
         NowPlayingUi(track, lyrics, timeline, snapshot, artwork, palette, energy)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUi())
 
+    /** Current total lyric offset and this song's own nudge. */
+    val offsetMs: StateFlow<Long> = nowPlaying.offsetMs
+    fun songOffsetMs(): Long = nowPlaying.songOffsetMs()
+    fun nudgeSongOffset(deltaMs: Long) = nowPlaying.nudgeSongOffset(deltaMs)
+    fun resetSongOffset() = nowPlaying.resetSongOffset()
+
     fun togglePlayPause() = nowPlaying.togglePlayPause()
     fun skipToNext() = nowPlaying.skipToNext()
     fun skipToPrevious() = nowPlaying.skipToPrevious()

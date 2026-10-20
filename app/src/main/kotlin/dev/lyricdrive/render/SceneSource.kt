@@ -7,7 +7,6 @@ import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.model.TrackMetadata
 import dev.lyricdrive.core.sync.LyricsTimeline
-import dev.lyricdrive.core.sync.PlaybackClock
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.core.sync.withWordHighlight
 import dev.lyricdrive.domain.NowPlayingSession
@@ -34,8 +33,8 @@ class LiveSceneSource(private val session: NowPlayingSession) : SceneSource {
     override val palette get() = session.palette.value
     override val artwork get() = session.artwork.value
     override val energy get() = session.energy.value
-    override fun positionMs(nowElapsedMs: Long) = PlaybackClock.positionAt(session.snapshot.value, nowElapsedMs, track?.durationMs)
-    override fun seekTo(positionMs: Long) = session.seekTo(positionMs)
+    override fun positionMs(nowElapsedMs: Long) = session.displayPositionAt(nowElapsedMs)
+    override fun seekTo(positionMs: Long) = session.seekToLyric(positionMs)
 }
 
 /**

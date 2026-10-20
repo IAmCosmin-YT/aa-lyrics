@@ -11,7 +11,8 @@ import org.junit.Test
 class TtmlConverterTest {
     private val ttml = """
         <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
-          <body><div>
+          <head><metadata><translations><translation><text for="L1">ignored</text></translation></translations></metadata></head>
+          <body dur="3:05.250"><div>
             <p begin="00:10.500" end="00:13.000">
               <span begin="00:10.500" end="00:11.000">Paper</span> <span begin="00:11.000" end="00:11.400">kites</span>
               <span begin="00:11.400" end="00:11.700">over</span> <span begin="00:11.700" end="00:12.000">the</span>
@@ -44,6 +45,8 @@ class TtmlConverterTest {
         assertEquals(3_723_400L, TtmlConverter.parseTime("1:02:03.4"))
         assertEquals(62_345L, TtmlConverter.parseTime("01:02.345"))
         assertNull(TtmlConverter.parseTime("abc"))
+        assertEquals(1_500L, TtmlConverter.parseTime("0.025m"))
         assertNull(TtmlConverter.toEnhancedLrc("not xml"))
+        assertEquals(185_250L, TtmlConverter.durationMs(ttml))
     }
 }

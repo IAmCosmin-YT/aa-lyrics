@@ -60,7 +60,8 @@ app/    (Android)
   ui            Compose phone UI: FluidBackground, KaraokeText, LyricsScreen, onboarding
 ```
 
-**Lyrics priority:** Room cache → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
+**Lyrics priority:** Room cache → BetterLyrics (`lyrics-api.boidu.dev`, word-synced TTML, then
+its KuGou endpoint) → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
 duration; then `/api/search` ranked by similarity/duration/sync) → embedded tags (local files).
 Offline lookups show title + artist with an "offline" notice and retry automatically when the
 network comes back.
@@ -85,18 +86,21 @@ word timing produces a continuous left-to-right fill across wrapped lines.
 The phone and the car draw with the **same renderer** (`render/`), so every option below looks
 identical on Android Auto. The settings screen has a live preview at the top.
 
-- **Theme:** album colors (moving / still), blurred album art, Spectrum, Aurora, Sunset, Ocean,
-  Nebula (stars), Synthwave (grid + RGB split, monospace), Lofi vinyl (grain, vignette, spinning
-  record, serif), Disco (cycling neon, spotlights, scanlines, pulses on sung words), Black (OLED).
-- **Animation:** Fluid, Karaoke, Wave, Typewriter, Spotlight, Bouncy, Cinematic (two subtitle
-  lines), Glance & drive (huge current line, sub-100 ms snaps), Single line (+ progress bar),
-  Minimal.
+- **Theme:** album colors (moving / still), blurred album art, Spectrum, Lofi vinyl (grain,
+  vignette, spinning record), Disco (cycling neon, spotlights, pulses on sung words), Black (OLED).
+- **Animation:** Fluid (soft wipe, sung words float up, held notes swell and glow), Karaoke
+  (outlined text, crisp wipe), Bouncing ball, Typewriter (letter by letter), Cinematic (two
+  subtitle lines), Glance & drive, Single line (+ progress bar). Fill fronts are soft gradients on
+  the glyphs — no clipping rectangles.
 - **Highlight color:** Auto (theme), Album opposite (complementary hue), White, Amber, Crimson,
   Ice blue, Emerald.
 - **Word timing:** Auto (real word timestamps when the source has them — e.g. TTML or enhanced
   LRC — otherwise estimated), Real only, Off. The header shows which one you're seeing.
 - **Brightness:** Auto (car night signal / phone dark mode), Light sensor (phone sensor: day, dim
   for tunnels/overcast, night), Always dark, Always bright.
+- **Sync:** global audio delay (Bluetooth / Android Auto lag) plus per-song nudges from the sync
+  button on the lyrics screen. Line-synced lyrics get word timing estimated from syllables at a
+  rate measured per song.
 - **Android Auto → Full screen when parked:** the cover panel slides in and all lines show when
   the car is parked; it collapses to the 3-line view as soon as you drive.
 

@@ -3,6 +3,7 @@ package dev.lyricdrive.domain
 import android.graphics.Bitmap
 import android.os.SystemClock
 import dev.lyricdrive.core.domain.LyricsPipeline
+import dev.lyricdrive.core.match.TrackNormalizer
 import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.model.PlaybackSnapshot
@@ -84,8 +85,24 @@ class NowPlayingSession(
         .mapLatest { AlbumPaletteExtractor.extract(it) }
         .stateIn(scope, SharingStarted.Eagerly, LyricPalette.DEFAULT)
 
+    private val settingsRepository = settings
+
+    /** Total lyric offset: global audio delay + this song's nudge. Positive = lyrics later. */
+    val offsetMs: StateFlow<Long> = combine(
+        settings.settings.map { it.audioDelayMs }.distinctUntilChanged(),
+        track,
+        settings.songOffsets,
+    ) { delay, track, offsets ->
+        delay + (track?.let { offsets[TrackNormalizer.cacheKey(it)] } ?: 0L)
+    }.stateIn(scope, SharingStarted.Eagerly, 0L)
+
+    /** Playback state shifted by [offsetMs]: what the lyrics should follow. */
+    val displaySnapshot: StateFlow<PlaybackSnapshot> = combine(snapshot, offsetMs) { s, offset ->
+        if (offset == 0L) s else s.copy(positionMs = s.positionMs - offset)
+    }.stateIn(scope, SharingStarted.Eagerly, PlaybackSnapshot.NONE)
+
     /** Active-line index, emitted only on change (sleeps until each line boundary). */
-    val activeLine: Flow<Int> = SyncEngine.activeLineChanges(timeline, snapshot, clock)
+    val activeLine: Flow<Int> = SyncEngine.activeLineChanges(timeline, displaySnapshot, clock)
 
     init {
         observer.player
@@ -95,7 +112,24 @@ class NowPlayingSession(
             .launchIn(scope)
     }
 
-    fun positionNow(): Long = PlaybackClock.positionAt(_snapshot.value, clock.nowMs(), track.value?.durationMs)
+    /** Lyric-time position (offset applied). */
+    fun displayPositionAt(nowMs: Long): Long =
+        PlaybackClock.positionAt(_snapshot.value, nowMs, track.value?.durationMs) - offsetMs.value
+
+    /** Tap on a lyric line: seek so that the line starts now, honoring the offset. */
+    fun seekToLyric(lyricMs: Long) = seekTo(lyricMs + offsetMs.value)
+
+    fun songOffsetMs(): Long = track.value?.let { settingsRepository.songOffsets.value[TrackNormalizer.cacheKey(it)] } ?: 0L
+
+    fun nudgeSongOffset(deltaMs: Long) {
+        val key = track.value?.let(TrackNormalizer::cacheKey) ?: return
+        settingsRepository.setSongOffset(key, (songOffsetMs() + deltaMs).coerceIn(-5_000, 5_000))
+    }
+
+    fun resetSongOffset() {
+        val key = track.value?.let(TrackNormalizer::cacheKey) ?: return
+        settingsRepository.setSongOffset(key, 0)
+    }
 
     /**
      * Click-to-resync: tell the player to seek and move our clock immediately so the UI jumps to
