@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +15,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,21 +33,17 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -66,7 +65,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -81,7 +79,15 @@ import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.model.PlaybackSnapshot
 import dev.lyricdrive.core.sync.LyricsTimeline
 import dev.lyricdrive.core.sync.PlaybackClock
-import dev.lyricdrive.ui.components.FluidBackground
+import dev.lyricdrive.core.sync.WordHighlight
+import dev.lyricdrive.ui.components.LyricBackground
+import dev.lyricdrive.ui.theme.LyricStyleSpec
+import dev.lyricdrive.ui.theme.forNight
+import dev.lyricdrive.ui.theme.isNight
+import dev.lyricdrive.ui.theme.nightTextAlpha
+import dev.lyricdrive.ui.theme.palette
+import dev.lyricdrive.ui.theme.readableAccent
+import dev.lyricdrive.ui.theme.spec
 import dev.lyricdrive.ui.components.KaraokeText
 import kotlin.math.abs
 import kotlin.math.min
@@ -92,17 +98,20 @@ private val LyricStyle = TextStyle(fontSize = 30.sp, lineHeight = 36.sp, fontWei
 fun LyricsScreen(vm: LyricsViewModel) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val following by vm.following.collectAsStateWithLifecycle()
-    val wordSync by vm.wordSync.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    val night = settings.nightMode.isNight(isSystemInDarkTheme())
+    val spec = settings.animationStyle.spec()
+    val accent = Color(settings.backgroundMode.palette(ui.palette).forNight(night).readableAccent())
 
     if (showSettings) {
-        SettingsDialog(wordSync = wordSync, onWordSyncChange = vm::setWordSync, onDismiss = { showSettings = false })
+        SettingsDialog(settings, onChange = vm::updateSettings, onDismiss = { showSettings = false })
     }
 
     Box(Modifier.fillMaxSize()) {
-        FluidBackground(ui.palette, ui.energy, ui.snapshot.isPlaying)
+        LyricBackground(settings.backgroundMode, ui.palette, ui.artwork, ui.energy, ui.snapshot.isPlaying, night)
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            Header(ui, onSettings = { showSettings = true })
+            Header(ui, timingBadge(ui.lyrics, settings.wordHighlight), onSettings = { showSettings = true })
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (val state = ui.lyrics) {
                     LyricsState.Idle -> CenterMessage(stringResource(R.string.nothing_playing), stringResource(R.string.nothing_playing_hint))
@@ -117,6 +126,9 @@ fun LyricsScreen(vm: LyricsViewModel) {
                             snapshot = ui.snapshot,
                             durationMs = state.track.durationMs,
                             following = following,
+                            spec = spec,
+                            accent = accent,
+                            textAlpha = nightTextAlpha(night),
                             onUserScrollStarted = vm::onUserScrollStarted,
                             onUserScrollEnded = vm::onUserScrollEnded,
                             onResume = vm::resumeFollowing,
@@ -149,6 +161,9 @@ private fun SyncedLyrics(
     snapshot: PlaybackSnapshot,
     durationMs: Long?,
     following: Boolean,
+    spec: LyricStyleSpec,
+    accent: Color,
+    textAlpha: Float,
     onUserScrollStarted: () -> Unit,
     onUserScrollEnded: () -> Unit,
     onResume: () -> Unit,
@@ -171,7 +186,7 @@ private fun SyncedLyrics(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val halfHeight = maxHeight / 2
         LaunchedEffect(active, following, timeline) {
-            if (following) listState.centerOn(active.coerceAtLeast(0))
+            if (following) listState.centerOn(active.coerceAtLeast(0), spec)
         }
         LazyColumn(
             state = listState,
@@ -182,6 +197,9 @@ private fun SyncedLyrics(
                 LyricRow(
                     line = line,
                     distance = if (active < 0) index + 1 else index - active,
+                    spec = spec,
+                    accent = accent,
+                    textAlpha = textAlpha,
                     filled = { timeline.filledCharacters(index, position.value) },
                     progress = { timeline.lineProgress(index, position.value) },
                     onClick = { onLineTapped(line) },
@@ -213,42 +231,51 @@ private fun SyncedLyrics(
 }
 
 /** Spring-scroll so the item's center lands on the viewport's optical center. */
-private suspend fun LazyListState.centerOn(index: Int) {
+private suspend fun LazyListState.centerOn(index: Int, spec: LyricStyleSpec) {
     if (layoutInfo.totalItemsCount == 0) return
     var item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
     if (item == null) {
         // Far away (e.g. after a seek): hop next to it, then let the spring do the last stretch.
+        if (spec.springDamping == null) {
+            scrollToItem(index)
+            item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+        }
         val firstVisible = layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0
-        scrollToItem((index + if (index > firstVisible) -2 else 2).coerceIn(0, layoutInfo.totalItemsCount - 1))
-        item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+        if (item == null) {
+            scrollToItem((index + if (index > firstVisible) -2 else 2).coerceIn(0, layoutInfo.totalItemsCount - 1))
+            item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+        }
     }
     val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
     // Item offsets and viewport offsets share one coordinate space (content padding included).
     val delta = item.offset + item.size / 2f - viewportCenter
-    animateScrollBy(delta, spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow))
+    val damping = spec.springDamping
+    if (damping == null) scrollBy(delta) else animateScrollBy(delta, spring(dampingRatio = damping, stiffness = spec.springStiffness))
 }
 
 @Composable
 private fun LyricRow(
     line: LyricLine,
     distance: Int,
+    spec: LyricStyleSpec,
+    accent: Color,
+    textAlpha: Float,
     filled: () -> Float,
     progress: () -> Float,
     onClick: () -> Unit,
 ) {
     val isActive = distance == 0
-    val springSpec = spring<Float>(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
-    val scale by animateFloatAsState(if (isActive) 1f else 0.85f, springSpec, label = "scale")
-    val alpha by animateFloatAsState(
-        when {
-            isActive -> 1f
-            abs(distance) == 1 -> 0.5f
-            else -> 0.4f
-        },
-        springSpec,
-        label = "alpha",
-    )
-    val blur by animateDpAsState(if (isActive) 0.dp else (min(abs(distance), 3) * 1.5f).dp, label = "blur")
+    val steps = min(abs(distance), 3)
+    val targetScale = if (isActive) spec.activeScale else spec.inactiveScale
+    val targetAlpha = textAlpha * when {
+        isActive -> 1f
+        abs(distance) == 1 -> spec.nearAlpha
+        else -> spec.farAlpha
+    }
+    val damping = spec.springDamping
+    val scale by animateFloatAsState(targetScale, if (damping == null) snap<Float>() else spring<Float>(damping, spec.springStiffness * 1.5f), label = "scale")
+    val alpha by animateFloatAsState(targetAlpha, if (damping == null) snap<Float>() else spring<Float>(1f, Spring.StiffnessMediumLow), label = "alpha")
+    val blur by animateDpAsState(if (isActive) 0.dp else (steps * spec.blurPerStepDp).dp, label = "blur")
 
     Box(
         Modifier
@@ -267,11 +294,20 @@ private fun LyricRow(
                 this.alpha = alpha
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
-            .blur(blur)
+            .then(if (spec.blurPerStepDp > 0f) Modifier.blur(blur) else Modifier)
         if (line.isInterlude) {
             InterludeDots(isActive, progress, content)
         } else {
-            KaraokeText(line.text, LyricStyle, active = isActive, filled = filled, modifier = content)
+            KaraokeText(
+                line.text,
+                LyricStyle,
+                active = isActive,
+                filled = filled,
+                modifier = content,
+                dimColor = Color.White.copy(alpha = if (isActive) spec.activeDimAlpha else 1f),
+                litColor = if (spec.accentFill) accent else Color.White,
+                glow = spec.glow,
+            )
         }
     }
 }
@@ -331,7 +367,7 @@ private fun CenterMessage(title: String, subtitle: String) {
 }
 
 @Composable
-private fun Header(ui: NowPlayingUi, onSettings: () -> Unit) {
+private fun Header(ui: NowPlayingUi, badge: String?, onSettings: () -> Unit) {
     val track = ui.track
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (track != null) {
@@ -349,6 +385,7 @@ private fun Header(ui: NowPlayingUi, onSettings: () -> Unit) {
             if (track != null) {
                 Text(track.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                badge?.let { Text(it, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp) }
             }
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(56.dp)) {
@@ -357,29 +394,16 @@ private fun Header(ui: NowPlayingUi, onSettings: () -> Unit) {
     }
 }
 
+/** Tells the user whether the fill follows real word timing, an estimate, or whole lines. */
 @Composable
-private fun SettingsDialog(wordSync: Boolean, onWordSyncChange: (Boolean) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
-        title = { Text(stringResource(R.string.settings)) },
-        text = {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .toggleable(value = wordSync, role = Role.Switch, onValueChange = onWordSyncChange)
-                    .heightIn(min = 64.dp)
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.setting_word_sync), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.setting_word_sync_desc), fontSize = 13.sp, color = Color.White.copy(alpha = 0.7f))
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(checked = wordSync, onCheckedChange = null)
-            }
+private fun timingBadge(state: LyricsState, mode: WordHighlight): String? {
+    val lyrics = (state as? LyricsState.Ready)?.lyrics as? Lyrics.Synced ?: return null
+    return stringResource(
+        when {
+            mode == WordHighlight.OFF -> R.string.badge_line_synced
+            lyrics.hasWordTiming -> R.string.badge_word_synced
+            mode == WordHighlight.AUTO -> R.string.badge_word_estimated
+            else -> R.string.badge_line_synced
         },
     )
 }

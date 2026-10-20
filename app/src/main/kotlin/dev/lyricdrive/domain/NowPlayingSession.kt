@@ -12,6 +12,7 @@ import dev.lyricdrive.core.sync.LyricsEnergy
 import dev.lyricdrive.core.sync.LyricsTimeline
 import dev.lyricdrive.core.sync.PlaybackClock
 import dev.lyricdrive.core.sync.SyncEngine
+import dev.lyricdrive.core.sync.withWordHighlight
 import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.media.ObservedPlayer
 import dev.lyricdrive.data.net.ConnectivityObserver
@@ -59,9 +60,9 @@ class NowPlayingSession(
     private val fullTimeline: Flow<LyricsTimeline> = lyrics
         .map { state -> ((state as? LyricsState.Ready)?.lyrics as? Lyrics.Synced)?.let { LyricsTimeline(it.lines) } ?: LyricsTimeline.EMPTY }
 
-    /** Timeline used by every renderer; word timings are stripped when word sync is turned off. */
-    val timeline: StateFlow<LyricsTimeline> = combine(fullTimeline, settings.wordSync) { timeline, wordSync ->
-        if (wordSync) timeline else timeline.withoutWordTiming()
+    /** Timeline used by every renderer, with the user's word-highlight mode applied. */
+    val timeline: StateFlow<LyricsTimeline> = combine(fullTimeline, settings.settings.map { it.wordHighlight }.distinctUntilChanged()) { timeline, mode ->
+        timeline.withWordHighlight(mode)
     }
         .stateIn(scope, SharingStarted.Eagerly, LyricsTimeline.EMPTY)
 

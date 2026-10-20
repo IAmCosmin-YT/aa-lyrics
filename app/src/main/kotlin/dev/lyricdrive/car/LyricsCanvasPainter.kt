@@ -1,8 +1,10 @@
 package dev.lyricdrive.car
 
+import android.graphics.Bitmap
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RadialGradient
@@ -18,7 +20,11 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.graphics.ColorUtils
 import dev.lyricdrive.core.model.LyricLine
+import dev.lyricdrive.data.settings.BackgroundMode
 import dev.lyricdrive.ui.theme.LyricPalette
+import dev.lyricdrive.ui.theme.LyricStyleSpec
+import dev.lyricdrive.ui.theme.nightTextAlpha
+import dev.lyricdrive.ui.theme.scrimAlpha
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
@@ -41,6 +47,12 @@ class LyricsCanvasPainter(private val density: Float) {
         val lineProgress: Float,
         val scrollY: Float,
         val glanceable: Boolean,
+        val style: LyricStyleSpec,
+        val backgroundMode: BackgroundMode,
+        val artwork: Bitmap?,
+        val night: Boolean,
+        /** Fill color for styles that use the accent instead of white. */
+        val accent: Int,
         /** Remaining fraction of the manual-scroll hold, or null when following. */
         val resumeCountdown: Float?,
         val header: String?,
@@ -167,6 +179,24 @@ class LyricsCanvasPainter(private val density: Float) {
 
         c.drawColor(palette.deep)
         val t = frame.backgroundTime
+        val art = frame.artwork?.takeIf { frame.backgroundMode == BackgroundMode.ALBUM_ART }?.let(::tinyArtwork)
+        when {
+            frame.backgroundMode == BackgroundMode.BLACK -> Unit
+            frame.backgroundMode == BackgroundMode.ALBUM_GRADIENT -> drawGradient(c, w, h, palette)
+            art != null -> drawArtwork(c, w, h, t, art)
+            else -> drawBlobs(c, w, h, t)
+        }
+
+        if (target != null) {
+            val node = blurNode!!
+            node.endRecording()
+            canvas.drawRenderNode(node)
+        }
+        // Scrim keeps white text legible in sunlight regardless of colors; heavier at night.
+        canvas.drawColor(ColorUtils.setAlphaComponent(Color.BLACK, (scrimAlpha(frame.night) * 255).toInt()))
+    }
+
+    private fun drawBlobs(c: Canvas, w: Float, h: Float, t: Float) {
         for (i in blobShaders.indices) {
             val cx = w * (0.5f + 0.38f * sin(t * SPEED_X[i] + PHASE[i]))
             val cy = h * (0.5f + 0.38f * cos(t * SPEED_Y[i] + PHASE[i] * 1.7f))
@@ -177,14 +207,45 @@ class LyricsCanvasPainter(private val density: Float) {
             blobPaint.shader = blobShaders[i]
             c.drawCircle(cx, cy, r, blobPaint)
         }
+        blobPaint.shader = null
+    }
 
-        if (target != null) {
-            val node = blurNode!!
-            node.endRecording()
-            canvas.drawRenderNode(node)
+    private var gradientKey: Triple<LyricPalette, Float, Float>? = null
+    private var gradientShader: Shader? = null
+
+    private fun drawGradient(c: Canvas, w: Float, h: Float, palette: LyricPalette) {
+        val key = Triple(palette, w, h)
+        if (key != gradientKey) {
+            gradientKey = key
+            gradientShader = LinearGradient(0f, 0f, w, h, intArrayOf(palette.primary, palette.secondary, palette.deep), null, Shader.TileMode.CLAMP)
         }
-        // Scrim keeps white text legible in sunlight regardless of album colors.
-        canvas.drawColor(ColorUtils.setAlphaComponent(Color.BLACK, 96))
+        blobPaint.shader = gradientShader
+        c.drawRect(0f, 0f, w, h, blobPaint)
+        blobPaint.shader = null
+    }
+
+    private var tinySource: Bitmap? = null
+    private var tiny: Bitmap? = null
+    private val artPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val artRect = RectF()
+
+    /** 32 px copy: stretched with bilinear filtering it is already a soft blur on any API level. */
+    private fun tinyArtwork(source: Bitmap): Bitmap? {
+        if (source.isRecycled) return null
+        if (source !== tinySource) {
+            tinySource = source
+            tiny = Bitmap.createScaledBitmap(source, 32, 32, true)
+        }
+        return tiny
+    }
+
+    /** Blurred cover with a slow pan and zoom. */
+    private fun drawArtwork(c: Canvas, w: Float, h: Float, t: Float, art: Bitmap) {
+        val side = max(w, h) * (1.25f + 0.08f * sin(t * 0.4f))
+        val left = (w - side) / 2f + w * 0.06f * sin(t * 0.23f)
+        val top = (h - side) / 2f + h * 0.06f * cos(t * 0.19f)
+        artRect.set(left, top, left + side, top + side)
+        c.drawBitmap(art, null, artRect, artPaint)
     }
 
     /** Returns a recording canvas whose content gets a hardware Gaussian blur (API 31+). */
@@ -215,25 +276,27 @@ class LyricsCanvasPainter(private val density: Float) {
             if (bottom < area.top || top > area.bottom) continue
 
             val isActive = distance == 0
-            val scale = if (isActive) 1f else 0.85f
-            val alpha = when {
-                isActive -> 255
-                abs(distance) == 1 -> 128
-                else -> 102
-            }
-            val blurLevel = if (isActive || frame.glanceable) 0 else min(abs(distance), 3)
+            val style = frame.style
+            val textAlpha = nightTextAlpha(frame.night)
+            val scale = if (isActive) style.activeScale else style.inactiveScale
+            val alpha = (255 * textAlpha * when {
+                isActive -> 1f
+                abs(distance) == 1 -> style.nearAlpha
+                else -> style.farAlpha
+            }).toInt()
+            val blurLevel = if (isActive || frame.glanceable || style.blurPerStepDp == 0f) 0 else min(abs(distance), 3)
             val layout = layouts[i]
             val textTop = top + (rowHeights[i] - layout.height) / 2f
 
             canvas.save()
             canvas.scale(scale, scale, left, top + rowHeights[i] / 2f)
             canvas.translate(left, textTop)
-            lyricPaint.maskFilter = if (blurLevel == 0) null else blurFilter(blurLevel)
+            lyricPaint.maskFilter = if (blurLevel == 0) null else blurFilter(blurLevel, style.blurPerStepDp)
             if (isActive && !frame.lines[i].isInterlude) {
-                drawKaraoke(canvas, layout, frame.filledCharacters)
+                drawKaraoke(canvas, layout, frame.filledCharacters, frame, textAlpha)
             } else if (isActive) {
                 // Interlude: dots breathe with the progress of the break.
-                lyricPaint.alpha = (140 + 115 * sin(frame.lineProgress * Math.PI.toFloat() * 6f).let { it * it }).toInt()
+                lyricPaint.alpha = ((140 + 115 * sin(frame.lineProgress * Math.PI.toFloat() * 6f).let { it * it }) * textAlpha).toInt()
                 layout.draw(canvas)
             } else {
                 lyricPaint.alpha = alpha
@@ -247,12 +310,15 @@ class LyricsCanvasPainter(private val density: Float) {
     }
 
     /** Dim base text, then the same text bright + glowing, clipped to the sung portion. */
-    private fun drawKaraoke(canvas: Canvas, layout: StaticLayout, filled: Float) {
-        lyricPaint.alpha = 115
+    private fun drawKaraoke(canvas: Canvas, layout: StaticLayout, filled: Float, frame: Frame, textAlpha: Float) {
+        lyricPaint.color = Color.WHITE
+        lyricPaint.alpha = (255 * frame.style.activeDimAlpha * textAlpha).toInt()
         layout.draw(canvas)
 
-        lyricPaint.alpha = 255
-        lyricPaint.setShadowLayer(14f * density, 0f, 0f, ColorUtils.setAlphaComponent(Color.WHITE, 150))
+        // setColor resets alpha, so color first.
+        lyricPaint.color = if (frame.style.accentFill) frame.accent else Color.WHITE
+        lyricPaint.alpha = (255 * textAlpha).toInt()
+        if (frame.style.glow) lyricPaint.setShadowLayer(14f * density, 0f, 0f, ColorUtils.setAlphaComponent(lyricPaint.color, 150))
         val length = layout.text.length
         for (line in 0 until layout.lineCount) {
             val start = layout.getLineStart(line)
@@ -265,6 +331,7 @@ class LyricsCanvasPainter(private val density: Float) {
             canvas.restore()
         }
         lyricPaint.clearShadowLayer()
+        lyricPaint.color = Color.WHITE
     }
 
     private fun xAt(layout: StaticLayout, line: Int, filled: Float, length: Int): Float {
@@ -307,8 +374,8 @@ class LyricsCanvasPainter(private val density: Float) {
         canvas.drawText(text, cx - textWidth / 2, resumeButton.centerY() + labelPaint.textSize / 3, labelPaint)
     }
 
-    private fun blurFilter(level: Int) =
-        blurFilters.getOrPut(level) { BlurMaskFilter(level * 1.6f * density, BlurMaskFilter.Blur.NORMAL) }
+    private fun blurFilter(level: Int, perStepDp: Float) =
+        blurFilters.getOrPut(level * 100 + (perStepDp * 10).toInt()) { BlurMaskFilter(level * perStepDp * density, BlurMaskFilter.Blur.NORMAL) }
 
     private fun ellipsize(text: String, paint: TextPaint, width: Int): String =
         android.text.TextUtils.ellipsize(text, paint, width - 2 * sidePadding, android.text.TextUtils.TruncateAt.END).toString()

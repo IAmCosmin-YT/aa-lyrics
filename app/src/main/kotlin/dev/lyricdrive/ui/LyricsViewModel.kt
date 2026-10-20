@@ -9,6 +9,7 @@ import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.model.PlaybackSnapshot
 import dev.lyricdrive.core.model.TrackMetadata
 import dev.lyricdrive.core.sync.LyricsTimeline
+import dev.lyricdrive.data.settings.LyricSettings
 import dev.lyricdrive.ui.theme.LyricPalette
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,10 +33,10 @@ data class NowPlayingUi(
 
 class LyricsViewModel(app: Application) : AndroidViewModel(app) {
     private val nowPlaying = (app as LyricDriveApp).graph.nowPlaying
-    private val settings = (app as LyricDriveApp).graph.settings
+    private val settingsRepository = (app as LyricDriveApp).graph.settings
 
-    val wordSync: StateFlow<Boolean> = settings.wordSync
-    fun setWordSync(enabled: Boolean) = settings.setWordSync(enabled)
+    val settings: StateFlow<LyricSettings> = settingsRepository.settings
+    fun updateSettings(transform: (LyricSettings) -> LyricSettings) = settingsRepository.update(transform)
 
     val ui: StateFlow<NowPlayingUi> = combine(
         combine(nowPlaying.track, nowPlaying.lyrics, nowPlaying.timeline, ::Triple),

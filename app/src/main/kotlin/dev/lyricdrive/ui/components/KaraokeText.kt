@@ -31,6 +31,7 @@ fun KaraokeText(
     modifier: Modifier = Modifier,
     dimColor: Color = Color.White.copy(alpha = 0.45f),
     litColor: Color = Color.White,
+    glow: Boolean = true,
 ) {
     var layout by remember(text) { mutableStateOf<TextLayoutResult?>(null) }
     Box(modifier) {
@@ -38,7 +39,7 @@ fun KaraokeText(
         if (active) {
             Text(
                 text,
-                style = style.copy(shadow = Shadow(litColor.copy(alpha = 0.6f), Offset.Zero, blurRadius = 24f)),
+                style = if (glow) style.copy(shadow = Shadow(litColor.copy(alpha = 0.6f), Offset.Zero, blurRadius = 24f)) else style,
                 color = litColor,
                 modifier = Modifier.drawWithContent {
                     val l = layout ?: return@drawWithContent

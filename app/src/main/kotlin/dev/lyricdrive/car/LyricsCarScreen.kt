@@ -22,9 +22,10 @@ import kotlinx.coroutines.launch
  * changes (play/pause, follow), never per lyric line, so it stays far below host refresh limits.
  */
 class LyricsCarScreen(carContext: CarContext) : Screen(carContext) {
-    private val nowPlaying = (carContext.applicationContext as LyricDriveApp).graph.nowPlaying
+    private val graph = (carContext.applicationContext as LyricDriveApp).graph
+    private val nowPlaying = graph.nowPlaying
     private val driving = DrivingStateMonitor(carContext)
-    private val renderer = LyricsSurfaceRenderer(carContext, nowPlaying, driving) { invalidate() }
+    private val renderer = LyricsSurfaceRenderer(carContext, nowPlaying, graph.settings, driving) { invalidate() }
 
     init {
         lifecycle.addObserver(driving)

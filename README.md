@@ -80,6 +80,18 @@ word timing produces a continuous left-to-right fill across wrapped lines.
 **Touch:** rows are ≥ 64 dp with ripple feedback. Dragging the list pauses auto-scroll; it resumes
 4 s after release, or immediately via the "Resume auto-scroll" pill.
 
+## Settings (⚙ in the phone app — also applied to the car screen)
+
+- **Word-by-word highlight:** *Auto* (real word timestamps when present, otherwise estimated from
+  each line's duration), *Only real word timing*, or *Off*. Most LRCLIB lyrics are line-timed only,
+  so *Auto* is what makes the fill move for most songs; the header shows which kind you're seeing.
+- **Animation style:** Fluid, Karaoke (accent-colored fill, flat list), Focus (spotlight), Bouncy,
+  Minimal (no motion).
+- **Background:** album colors (moving / still), blurred album art, Aurora / Sunset / Ocean
+  presets, or black.
+- **Night mode:** *Auto* darkens colors, scrim and text when the car reports night (headlights /
+  light sensor via `CarContext.isDarkMode`) or the phone is in dark mode; or *Always* / *Never*.
+
 ## Permissions
 
 - `INTERNET`, `ACCESS_NETWORK_STATE` — LRCLIB.

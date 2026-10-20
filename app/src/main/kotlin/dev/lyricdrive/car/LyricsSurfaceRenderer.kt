@@ -21,7 +21,15 @@ import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.sync.LyricsTimeline
 import dev.lyricdrive.core.sync.PlaybackClock
+import dev.lyricdrive.data.settings.AnimationStyle
+import dev.lyricdrive.data.settings.SettingsRepository
 import dev.lyricdrive.domain.NowPlayingSession
+import dev.lyricdrive.ui.theme.LyricStyleSpec
+import dev.lyricdrive.ui.theme.forNight
+import dev.lyricdrive.ui.theme.isNight
+import dev.lyricdrive.ui.theme.palette
+import dev.lyricdrive.ui.theme.readableAccent
+import dev.lyricdrive.ui.theme.spec
 
 /**
  * Draws lyrics on the car surface at display rate (Choreographer/VSync) and handles touch.
@@ -39,6 +47,7 @@ import dev.lyricdrive.domain.NowPlayingSession
 class LyricsSurfaceRenderer(
     private val carContext: CarContext,
     private val nowPlaying: NowPlayingSession,
+    private val settings: SettingsRepository,
     private val driving: DrivingStateMonitor,
     private val onControlsChanged: () -> Unit,
 ) : DefaultLifecycleObserver {
@@ -209,7 +218,23 @@ class LyricsSurfaceRenderer(
         }
     }
 
+    private var appliedStyle: AnimationStyle? = null
+
+    private fun applySpring(style: AnimationStyle, spec: LyricStyleSpec) {
+        if (style == appliedStyle) return
+        appliedStyle = style
+        spec.springDamping?.let { damping ->
+            spring.spring.setDampingRatio(damping).setStiffness(spec.springStiffness)
+        }
+    }
+
     private fun buildFrame(painter: LyricsCanvasPainter): LyricsCanvasPainter.Frame {
+        val prefs = settings.settings.value
+        val style = prefs.animationStyle.spec()
+        applySpring(prefs.animationStyle, style)
+        // The host flips isDarkMode from the car's headlight / light-sensor night signal.
+        val night = prefs.nightMode.isNight(carContext.isDarkMode)
+        val palette = prefs.backgroundMode.palette(nowPlaying.palette.value).forNight(night)
         val track = nowPlaying.track.value
         val state = nowPlaying.lyrics.value
         val header = track?.let { "${it.title} · ${it.artist}" }
@@ -246,7 +271,11 @@ class LyricsSurfaceRenderer(
             scroll.value = if (lines.isEmpty()) 0f else painter.scrollTargetFor(lines, active.coerceAtLeast(0), visibleArea)
         } else if (isFollowing && synced && lines.isNotEmpty()) {
             val target = painter.scrollTargetFor(lines, active.coerceAtLeast(0), visibleArea)
-            if (springTarget.isNaN() || kotlin.math.abs(springTarget - target) > 0.5f) {
+            if (style.springDamping == null) {
+                spring.cancel()
+                scroll.value = target
+                springTarget = target
+            } else if (springTarget.isNaN() || kotlin.math.abs(springTarget - target) > 0.5f) {
                 springTarget = target
                 spring.animateToFinalPosition(target)
             }
@@ -259,7 +288,7 @@ class LyricsSurfaceRenderer(
             area = visibleArea,
             width = width,
             height = height,
-            palette = nowPlaying.palette.value,
+            palette = palette,
             backgroundTime = backgroundTime,
             lines = lines,
             activeIndex = active,
@@ -267,6 +296,11 @@ class LyricsSurfaceRenderer(
             lineProgress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
             scrollY = scroll.value,
             glanceable = driving.isMoving && synced,
+            style = style,
+            backgroundMode = prefs.backgroundMode,
+            artwork = nowPlaying.artwork.value,
+            night = night,
+            accent = palette.readableAccent(),
             resumeCountdown = countdown,
             header = if (message == null) header else null,
             message = message,
