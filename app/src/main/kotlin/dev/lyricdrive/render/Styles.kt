@@ -22,6 +22,8 @@ enum class WordEffect {
     TYPEWRITER,
     /** Neon flare on each newly sung word (disco theme). */
     FLARE,
+    /** Per-syllable swell, lift and glow with a sweeping gradient; long notes letter by letter. */
+    SYLLABLE,
 }
 
 /** Everything that differs between animation styles. Shared by the phone and the car renderer. */
@@ -51,6 +53,7 @@ data class LyricStyleSpec(
 )
 
 fun AnimationStyle.spec(): LyricStyleSpec = when (this) {
+    AnimationStyle.BEAUTIFUL -> LyricStyleSpec(inactiveScale = 0.92f, nearAlpha = 0.45f, farAlpha = 0.3f, blurPerStepDp = 1.25f, activeDimAlpha = 0.38f, glow = false, springDamping = 0.85f, springStiffness = 170f, wordEffect = WordEffect.SYLLABLE)
     AnimationStyle.FLUID -> LyricStyleSpec(blurPerStepDp = 1.5f, wordEffect = WordEffect.LIFT, featherDp = 22f)
     AnimationStyle.KARAOKE -> LyricStyleSpec(inactiveScale = 1f, nearAlpha = 0.6f, farAlpha = 0.6f, activeDimAlpha = 1f, glow = false, accentFill = true, springDamping = 1f, springStiffness = 400f, outline = true, featherDp = 4f)
     AnimationStyle.BOUNCING_BALL -> LyricStyleSpec(inactiveScale = 0.9f, activeDimAlpha = 0.55f, glow = false, accentFill = true, springDamping = 0.85f, springStiffness = 250f, wordEffect = WordEffect.BALL, featherDp = 10f)
@@ -91,7 +94,7 @@ object PresetPalettes {
 }
 
 fun BackgroundMode.palette(album: LyricPalette): LyricPalette = when (this) {
-    BackgroundMode.ALBUM_FLUID, BackgroundMode.ALBUM_ART, BackgroundMode.ALBUM_GRADIENT, BackgroundMode.SPECTRUM -> album
+    BackgroundMode.COVER_BLEND, BackgroundMode.ALBUM_FLUID, BackgroundMode.ALBUM_ART, BackgroundMode.ALBUM_GRADIENT, BackgroundMode.SPECTRUM -> album
     BackgroundMode.LOFI -> PresetPalettes.LOFI
     BackgroundMode.DISCO -> PresetPalettes.DISCO
     BackgroundMode.BLACK -> PresetPalettes.BLACK

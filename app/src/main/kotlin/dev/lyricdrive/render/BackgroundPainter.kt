@@ -70,6 +70,7 @@ class BackgroundPainter(private val density: Float) {
                 BackgroundMode.BLACK -> Unit
                 BackgroundMode.ALBUM_GRADIENT -> gradient(c, w, h, input.palette)
                 BackgroundMode.ALBUM_ART -> if (!artwork(c, w, h, input)) blobs(c, w, h, input.time, input.palette.blobColors(), 220)
+                BackgroundMode.COVER_BLEND -> if (!coverBlend(c, w, h, input)) blobs(c, w, h, input.time, input.palette.blobColors(), 220)
                 BackgroundMode.LOFI -> blobs(c, w, h, input.time * 0.6f, input.palette.blobColors(), 150)
                 BackgroundMode.DISCO -> discoBlobs(c, w, h, input)
                 BackgroundMode.SPECTRUM -> {
@@ -164,6 +165,44 @@ class BackgroundPainter(private val density: Float) {
         val top = (h - side) / 2f + h * 0.06f * cos(t * 0.19f)
         rect.set(left, top, left + side, top + side)
         c.drawBitmap(tiny!!, null, rect, bitmapPaint)
+        return true
+    }
+
+    private var discSource: Bitmap? = null
+    private var discShader: BitmapShader? = null
+    private var discSize = 1
+    private val saturate = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply { setSaturation(1.5f) })
+    private val discPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply { colorFilter = saturate }
+
+    /**
+     * Cover blend: the cover art drawn as several large discs, each rotating at its own pace and
+     * drifting slightly, then blurred together by the soft layer — the colors of the artwork keep
+     * flowing into each other without ever looking like a picture.
+     */
+    private fun coverBlend(c: Canvas, w: Float, h: Float, input: Input): Boolean {
+        val source = input.artwork?.takeUnless { it.isRecycled } ?: return false
+        if (source !== discSource) {
+            discSource = source
+            val small = Bitmap.createScaledBitmap(source, 96, 96, true)
+            discSize = small.width
+            discShader = BitmapShader(small, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        }
+        val shader = discShader ?: return false
+        val span = max(w, h)
+        val t = input.time
+        // (center x, center y, radius, degrees per time unit, phase)
+        for (d in DISCS) {
+            val cx = w * (d[0] + 0.05f * sin(t * 0.13f + d[4]))
+            val cy = h * (d[1] + 0.05f * cos(t * 0.11f + d[4]))
+            val r = span * d[2]
+            matrix.setScale(2 * r / discSize, 2 * r / discSize)
+            matrix.postTranslate(cx - r, cy - r)
+            matrix.postRotate((t * d[3] + d[4] * 57f) % 360f, cx, cy)
+            shader.setLocalMatrix(matrix)
+            discPaint.shader = shader
+            c.drawCircle(cx, cy, r, discPaint)
+        }
+        discPaint.shader = null
         return true
     }
 
@@ -284,6 +323,13 @@ class BackgroundPainter(private val density: Float) {
     }
 
     private companion object {
+        /** Cover-blend discs: back, center, top-left, bottom-right. */
+        val DISCS = arrayOf(
+            floatArrayOf(0.5f, 0.5f, 0.95f, 6f, 0f),
+            floatArrayOf(0.5f, 0.55f, 0.48f, -11f, 1.3f),
+            floatArrayOf(0.12f, 0.2f, 0.42f, 15f, 2.6f),
+            floatArrayOf(0.88f, 0.82f, 0.46f, -17f, 4.1f),
+        )
         val SPEED_X = floatArrayOf(0.31f, 0.23f, 0.41f, 0.19f)
         val SPEED_Y = floatArrayOf(0.27f, 0.37f, 0.21f, 0.33f)
         val PHASE = floatArrayOf(0f, 1.9f, 3.7f, 5.1f)

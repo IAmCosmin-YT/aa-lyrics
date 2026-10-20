@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** How lines move and look as playback advances. */
 enum class AnimationStyle {
+    /** Beautiful-Lyrics-style: syllables swell, lift and glow as they're sung; held notes go letter by letter. */
+    BEAUTIFUL,
+
     /** Apple-Music-like: soft gradient wipe, sung words lift and held notes glow; blurred neighbours. */
     FLUID,
 
@@ -32,6 +35,9 @@ enum class AnimationStyle {
 }
 
 enum class BackgroundMode {
+    /** Blurred cover art in slowly rotating discs that blend into each other. */
+    COVER_BLEND,
+
     /** Drifting blobs in album-art colors. */
     ALBUM_FLUID,
 
@@ -80,8 +86,8 @@ enum class NightMode {
 
 data class LyricSettings(
     val wordHighlight: WordHighlight = WordHighlight.AUTO,
-    val animationStyle: AnimationStyle = AnimationStyle.FLUID,
-    val backgroundMode: BackgroundMode = BackgroundMode.ALBUM_FLUID,
+    val animationStyle: AnimationStyle = AnimationStyle.BEAUTIFUL,
+    val backgroundMode: BackgroundMode = BackgroundMode.COVER_BLEND,
     val nightMode: NightMode = NightMode.AUTO,
     val highlightColor: HighlightColor = HighlightColor.AUTO,
     /** Android Auto: expand to the full-screen layout (cover panel + all lines) when parked. */
@@ -116,8 +122,8 @@ class SettingsRepository(context: Context) {
         val legacyWord = if (prefs.contains(KEY_LEGACY_WORD_SYNC) && !prefs.getBoolean(KEY_LEGACY_WORD_SYNC, true)) WordHighlight.OFF else null
         return LyricSettings(
             wordHighlight = enumOr(KEY_WORD_HIGHLIGHT, legacyWord ?: WordHighlight.AUTO),
-            animationStyle = enumOr(KEY_ANIMATION, AnimationStyle.FLUID),
-            backgroundMode = enumOr(KEY_BACKGROUND, BackgroundMode.ALBUM_FLUID),
+            animationStyle = enumOr(KEY_ANIMATION, AnimationStyle.BEAUTIFUL),
+            backgroundMode = enumOr(KEY_BACKGROUND, BackgroundMode.COVER_BLEND),
             nightMode = enumOr(KEY_NIGHT, NightMode.AUTO),
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),

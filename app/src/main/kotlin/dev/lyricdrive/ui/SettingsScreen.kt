@@ -79,6 +79,7 @@ private val WORD_CHOICES = listOf(
 )
 
 private val ANIMATION_CHOICES = listOf(
+    Choice(AnimationStyle.BEAUTIFUL, R.string.anim_beautiful, R.string.anim_beautiful_desc),
     Choice(AnimationStyle.FLUID, R.string.anim_fluid, R.string.anim_fluid_desc),
     Choice(AnimationStyle.KARAOKE, R.string.anim_karaoke, R.string.anim_karaoke_desc),
     Choice(AnimationStyle.BOUNCING_BALL, R.string.anim_ball, R.string.anim_ball_desc),
@@ -89,6 +90,7 @@ private val ANIMATION_CHOICES = listOf(
 )
 
 private val THEME_CHOICES = listOf(
+    Choice(BackgroundMode.COVER_BLEND, R.string.bg_cover_blend),
     Choice(BackgroundMode.ALBUM_FLUID, R.string.bg_album_fluid),
     Choice(BackgroundMode.ALBUM_ART, R.string.bg_album_art),
     Choice(BackgroundMode.ALBUM_GRADIENT, R.string.bg_album_gradient),

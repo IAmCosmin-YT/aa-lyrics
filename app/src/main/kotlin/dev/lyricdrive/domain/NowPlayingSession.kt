@@ -63,7 +63,7 @@ class NowPlayingSession(
 
     /** Timeline used by every renderer, with the user's word-highlight mode applied. */
     val timeline: StateFlow<LyricsTimeline> = combine(fullTimeline, settings.settings.map { it.wordHighlight }.distinctUntilChanged()) { timeline, mode ->
-        timeline.withWordHighlight(mode)
+        timeline.withWordHighlight(mode).withInterludes()
     }
         .stateIn(scope, SharingStarted.Eagerly, LyricsTimeline.EMPTY)
 

@@ -68,7 +68,8 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
         val track = nowPlaying.track.value ?: return
         val line = when (val l = state.lyrics) {
             is LyricsState.Ready -> when (val lyrics = l.lyrics) {
-                is Lyrics.Synced -> lyrics.lines.getOrNull(state.activeLine)?.let { if (it.isInterlude) "♪" else it.text }
+                // Index into the timeline (it may contain inserted interlude rows).
+                is Lyrics.Synced -> nowPlaying.timeline.value.lines.getOrNull(state.activeLine)?.let { if (it.isInterlude) "♪" else it.text }
                 is Lyrics.Instrumental -> getString(R.string.instrumental)
                 is Lyrics.Unsynced -> null
             }

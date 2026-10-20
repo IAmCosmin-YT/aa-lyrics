@@ -86,4 +86,7 @@
     <string name="lyrics_earlier">Earlier</string>
     <string name="lyrics_later">Later</string>
     <string name="reset">Reset</string>
+    <string name="anim_beautiful">Beautiful</string>
+    <string name="anim_beautiful_desc">Syllables swell, lift and glow as they\'re sung; long notes go letter by letter</string>
+    <string name="bg_cover_blend">Cover blend</string>
 </resources>

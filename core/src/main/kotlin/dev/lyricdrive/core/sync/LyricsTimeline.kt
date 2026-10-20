@@ -66,6 +66,29 @@ class LyricsTimeline(val lines: List<LyricLine>) {
     fun withoutWordTiming(): LyricsTimeline =
         if (lines.none { it.hasWordTiming }) this else LyricsTimeline(lines.map { it.copy(words = emptyList()) })
 
+    /**
+     * Inserts interlude rows (rendered as breathing dots) where the vocals pause for at least
+     * [minGapMs]: before the first line, and between a line's last sung word and the next line.
+     * Needs word timing to know when singing stops; lines without it are left alone.
+     */
+    fun withInterludes(minGapMs: Long = 4_500): LyricsTimeline {
+        if (lines.isEmpty()) return this
+        val out = ArrayList<LyricLine>(lines.size + 4)
+        val first = lines.first()
+        if (!first.isInterlude && first.startMs >= minGapMs) out += LyricLine(0, first.startMs, "")
+        lines.forEachIndexed { i, line ->
+            val next = lines.getOrNull(i + 1)
+            val sungEnd = line.words.lastOrNull()?.endMs
+            if (next != null && sungEnd != null && !line.isInterlude && !next.isInterlude && next.startMs - sungEnd >= minGapMs) {
+                out += line.copy(endMs = sungEnd)
+                out += LyricLine(sungEnd, next.startMs, "")
+            } else {
+                out += line
+            }
+        }
+        return if (out.size == lines.size) this else LyricsTimeline(out)
+    }
+
     companion object {
         val EMPTY = LyricsTimeline(emptyList())
     }

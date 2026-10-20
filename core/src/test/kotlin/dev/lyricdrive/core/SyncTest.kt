@@ -55,6 +55,19 @@ class SyncTest {
     }
 
     @Test
+    fun `inserts interludes for long vocal gaps`() {
+        val lines = LrcParser.parse("[00:06.00]<00:06.00>one <00:06.50>two <00:07.00>\n[00:20.00]<00:20.00>three <00:20.50>\n[00:21.00]four")
+        val t = LyricsTimeline(lines).withInterludes()
+        assertEquals(listOf("", "one two", "", "three", "four"), t.lines.map { it.text })
+        assertTrue(t.lines[0].isInterlude && t.lines[0].endMs == 6_000L)
+        assertEquals(7_000L, t.lines[1].endMs)
+        assertEquals(7_000L, t.lines[2].startMs)
+        assertEquals(2, t.activeIndex(10_000))
+        // Short gaps are left alone.
+        assertTrue(LyricsTimeline(LrcParser.parse("[00:01.00]<00:01.00>a <00:01.50>\n[00:03.00]b")).let { it.withInterludes() === it })
+    }
+
+    @Test
     fun `word timing can be turned off`() {
         val lineOnly = timeline.withoutWordTiming()
         assertEquals(4f, lineOnly.filledCharacters(0, 1_000), 0.001f)

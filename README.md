@@ -86,9 +86,13 @@ word timing produces a continuous left-to-right fill across wrapped lines.
 The phone and the car draw with the **same renderer** (`render/`), so every option below looks
 identical on Android Auto. The settings screen has a live preview at the top.
 
-- **Theme:** album colors (moving / still), blurred album art, Spectrum, Lofi vinyl (grain,
+- **Theme:** Cover blend (default — blurred cover art in slowly rotating discs that blend into
+  each other), album colors (moving / still), blurred album art, Spectrum, Lofi vinyl (grain,
   vignette, spinning record), Disco (cycling neon, spotlights, pulses on sung words), Black (OLED).
-- **Animation:** Fluid (soft wipe, sung words float up, held notes swell and glow), Karaoke
+- **Animation:** Beautiful (default, inspired by the Beautiful Lyrics Spicetify extension:
+  each syllable swells, lifts and glows as a soft gradient sweeps across it, long held notes
+  animate letter by letter, instrumental breaks show three filling dots that breathe and shrink
+  away before the vocals return), Fluid (soft wipe, sung words float up, held notes swell and glow), Karaoke
   (outlined text, crisp wipe), Bouncing ball, Typewriter (letter by letter), Cinematic (two
   subtitle lines), Glance & drive, Single line (+ progress bar). Fill fronts are soft gradients on
   the glyphs — no clipping rectangles.

@@ -232,6 +232,8 @@ class LyricsPainter(private val density: Float) {
             set.paint.maskFilter = if (blurLevel == 0) null else blurFilter(blurLevel, style.blurPerStepDp)
             if (isActive) {
                 drawActiveLine(canvas, set.paint, layout, frame.lines[i], frame, lineAlpha)
+            } else if (frame.lines[i].isInterlude && frame.synced) {
+                drawDots(canvas, set.paint, layout, frame.lines[i], frame, lineAlpha * 0.5f, active = false)
             } else {
                 drawPlain(canvas, set.paint, layout, lineAlpha, frame)
             }
@@ -382,11 +384,7 @@ class LyricsPainter(private val density: Float) {
     private fun drawActiveLine(canvas: Canvas, paint: TextPaint, layout: StaticLayout, line: LyricLine, frame: Frame, alpha: Float) {
         if (alpha <= 0.01f) return
         if (line.isInterlude) {
-            // Dots breathe through the instrumental break.
-            val pulse = sin(frame.lineProgress * Math.PI.toFloat() * 6f).let { it * it }
-            paint.color = Color.WHITE
-            paint.alpha = ((140 + 115 * pulse) * alpha).toInt()
-            layout.draw(canvas)
+            drawDots(canvas, paint, layout, line, frame, alpha, active = true)
             return
         }
         val effect = when {
@@ -395,7 +393,9 @@ class LyricsPainter(private val density: Float) {
             else -> WordEffect.NONE
         }
         if (frame.style.outline) drawOutline(canvas, paint, layout, alpha)
-        if (effect != WordEffect.NONE && line.hasWordTiming) {
+        if (effect == WordEffect.SYLLABLE && line.hasWordTiming) {
+            drawSyllables(canvas, paint, layout, line, frame, alpha)
+        } else if (effect != WordEffect.NONE && line.hasWordTiming) {
             drawWords(canvas, paint, layout, line, frame, alpha, effect)
         } else {
             drawFilled(canvas, paint, layout, frame, alpha)
@@ -432,9 +432,10 @@ class LyricsPainter(private val density: Float) {
         canvas: Canvas, paint: TextPaint, text: CharSequence, start: Int, end: Int,
         x: Float, baseline: Float, front: Float, frame: Frame, alpha: Float, glowBoost: Float,
         featherDp: Float = frame.style.featherDp,
+        featherPx: Float? = null,
     ) {
         val color = frame.highlight
-        val feather = featherDp * density
+        val feather = featherPx ?: (featherDp * density)
         paint.shader = if (front.isNaN()) null else LinearGradient(
             front - feather * 0.6f, 0f, front + feather * 0.4f, 0f,
             color, ColorUtils.setAlphaComponent(color, 0), Shader.TileMode.CLAMP,
@@ -546,6 +547,132 @@ class LyricsPainter(private val density: Float) {
         paint.color = Color.WHITE
     }
 
+    /**
+     * Beautiful-Lyrics-style syllables. Each syllable, as it's sung:
+     * - a gradient sweeps across it from before its left edge to past its right edge,
+     * - it swells slightly past full size and settles,
+     * - it dips, lifts and comes back to rest,
+     * - its glow flares quickly, holds, then fades by the end.
+     * Long held syllables with short text animate letter by letter, staggered, lifting twice as far.
+     */
+    private fun drawSyllables(canvas: Canvas, paint: TextPaint, layout: StaticLayout, line: LyricLine, frame: Frame, alpha: Float) {
+        val p = frame.positionMs
+        val text = layout.text
+        val dim = frame.style.activeDimAlpha
+        val size = paint.textSize
+        var offset = 0
+        for (syllable in line.words) {
+            val start = offset
+            val end = (offset + syllable.text.trimEnd().length).coerceAtMost(text.length)
+            offset += syllable.text.length
+            if (end <= start) continue
+            val li = layout.getLineForOffset(start)
+            val baseline = layout.getLineBaseline(li).toFloat()
+            val duration = (syllable.endMs - syllable.startMs).coerceAtLeast(1)
+            val t = ((p - syllable.startMs).toFloat() / duration).coerceIn(0f, 1f)
+            val emphasized = duration >= EMPHASIS_MIN_MS && (end - start) in 2..EMPHASIS_MAX_CHARS
+
+            if (!emphasized) {
+                val x0 = layout.getPrimaryHorizontal(start)
+                val x1 = if (end < layout.getLineEnd(li)) layout.getPrimaryHorizontal(end) else layout.getLineRight(li)
+                drawSyllablePiece(canvas, paint, text, start, end, x0, x1, baseline, t, size, 1f, frame, alpha, dim)
+            } else {
+                val n = end - start
+                for (k in 0 until n) {
+                    val c0 = start + k
+                    val lx0 = layout.getPrimaryHorizontal(c0)
+                    val lx1 = if (c0 + 1 < layout.getLineEnd(li)) layout.getPrimaryHorizontal(c0 + 1) else layout.getLineRight(li)
+                    val windowStart = k.toFloat() / n * 0.7f
+                    val lt = ((t - windowStart) / 0.45f).coerceIn(0f, 1f)
+                    drawSyllablePiece(canvas, paint, text, c0, c0 + 1, lx0, lx1, baseline, lt, size, 2f, frame, alpha, dim)
+                }
+            }
+        }
+        paint.color = Color.WHITE
+    }
+
+    private fun drawSyllablePiece(
+        canvas: Canvas, paint: TextPaint, text: CharSequence, start: Int, end: Int,
+        x0: Float, x1: Float, baseline: Float, t: Float, size: Float, intensity: Float,
+        frame: Frame, alpha: Float, dim: Float,
+    ) {
+        val e = sin(t * Math.PI.toFloat() / 2f) // ease-out
+        val bump = sin(e * Math.PI.toFloat())
+        val scale = 0.97f + 0.03f * e + 0.03f * intensity * bump
+        val dy = size * (0.01f * (1f - e) - 0.02f * intensity * bump)
+        val glow = (smoothstep(t / 0.18f) * (1f - smoothstep((t - 0.6f) / 0.4f))) * (0.55f + 0.25f * intensity)
+
+        canvas.save()
+        canvas.translate(0f, dy)
+        canvas.scale(scale, scale, (x0 + x1) / 2f, baseline - size * 0.35f)
+        if (t < 1f && dim > 0f) {
+            paint.color = Color.WHITE
+            paint.alpha = (255 * dim * alpha).toInt()
+            canvas.drawText(text, start, end, x0, baseline, paint)
+        }
+        if (t > 0f) {
+            val width = (x1 - x0).coerceAtLeast(1f)
+            val front = if (t >= 1f) Float.NaN else x0 + width * (-0.25f + 1.5f * e)
+            drawLitRun(canvas, paint, text, start, end, x0, baseline, front, frame, alpha, glowBoost = glow, featherPx = width * 0.5f + 8f * density)
+        }
+        canvas.restore()
+    }
+
+    /**
+     * Interlude: three dots that fill one after another through the break while the group gently
+     * breathes; they grow in at the start and shrink away just before the vocals return.
+     */
+    private fun drawDots(canvas: Canvas, paint: TextPaint, layout: StaticLayout, line: LyricLine, frame: Frame, alpha: Float, active: Boolean) {
+        val radius = paint.textSize * 0.16f
+        val gap = radius * 3.3f
+        val centerY = (layout.getLineTop(0) + layout.getLineBottom(0)) / 2f
+        val left = layout.getLineLeft(0)
+        val right = layout.getLineRight(0)
+        val groupWidth = gap * 2
+        val startX = if (layout.getParagraphAlignment(0) == Layout.Alignment.ALIGN_CENTER) (left + right) / 2f - groupWidth / 2f else radius * 1.2f
+        val cx = startX + groupWidth / 2f
+
+        var groupScale = 1f
+        var groupAlpha = alpha
+        val fills = FloatArray(3)
+        if (active) {
+            val elapsed = (frame.positionMs - line.startMs).toFloat()
+            val total = (line.endMs - line.startMs).toFloat().coerceAtLeast(1f)
+            val exitMs = minOf(650f, total * 0.25f)
+            val enter = smoothstep(elapsed / 400f)
+            val exit = smoothstep((elapsed - (total - exitMs)) / exitMs)
+            groupScale = (0.6f + 0.4f * enter) * (1f + 0.06f * sin(elapsed / 2400f * 2f * Math.PI.toFloat())) * (1f - 0.9f * exit)
+            groupAlpha = alpha * enter * (1f - exit)
+            val fillSpan = (total - exitMs).coerceAtLeast(1f)
+            for (i in 0..2) fills[i] = ((elapsed / fillSpan) * 3f - i).coerceIn(0f, 1f)
+        }
+        if (groupAlpha <= 0.01f) return
+
+        canvas.save()
+        canvas.scale(groupScale, groupScale, cx, centerY)
+        for (i in 0..2) {
+            val f = smoothstep(fills[i])
+            val x = startX + gap * i
+            val r = radius * (0.8f + 0.25f * f)
+            if (f > 0f) {
+                fillPaint.color = frame.highlight
+                fillPaint.maskFilter = glowFilter(radius * 2f)
+                fillPaint.alpha = (140 * f * groupAlpha).toInt()
+                canvas.drawCircle(x, centerY, r * 1.6f, fillPaint)
+                fillPaint.maskFilter = null
+            }
+            fillPaint.color = if (f > 0f) frame.highlight else Color.WHITE
+            fillPaint.alpha = (255 * groupAlpha * (0.3f + 0.7f * f)).toInt()
+            canvas.drawCircle(x, centerY, r, fillPaint)
+        }
+        canvas.restore()
+    }
+
+    private fun smoothstep(x: Float): Float {
+        val t = x.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
     /** Classic bouncing ball: arcs from word to word, landing on each one as it starts. */
     private fun drawBall(canvas: Canvas, stops: List<FloatArray>, p: Long, frame: Frame, alpha: Float) {
         val next = stops.indexOfFirst { it[2] > p }
@@ -600,6 +727,12 @@ class LyricsPainter(private val density: Float) {
     }
 
     private val glowFilters = HashMap<Int, BlurMaskFilter>()
+
+    private companion object {
+        /** Syllables held at least this long animate letter by letter. */
+        const val EMPHASIS_MIN_MS = 1_000L
+        const val EMPHASIS_MAX_CHARS = 12
+    }
 
     private fun glowFilter(radius: Float): BlurMaskFilter =
         glowFilters.getOrPut(radius.toInt().coerceAtLeast(1)) { BlurMaskFilter(radius.coerceAtLeast(1f), BlurMaskFilter.Blur.NORMAL) }
