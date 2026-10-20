@@ -11,6 +11,7 @@ import dev.lyricdrive.data.media.MediaSessionObserver
 import dev.lyricdrive.data.net.ConnectivityObserver
 import dev.lyricdrive.data.remote.LrclibClient
 import dev.lyricdrive.data.remote.LrclibLyricsSource
+import dev.lyricdrive.data.sensors.AmbientLightMonitor
 import dev.lyricdrive.data.settings.SettingsRepository
 import dev.lyricdrive.domain.ArtworkLoader
 import dev.lyricdrive.domain.NowPlayingSession
@@ -27,6 +28,8 @@ class AppGraph(app: Application) {
     val sessionObserver = MediaSessionObserver(app)
 
     val settings = SettingsRepository(app)
+
+    val ambientLight = AmbientLightMonitor(app)
 
     private val repository = LyricsRepository(
         cache = RoomLyricsCache(database.lyricsDao()),

@@ -26,7 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.lyricdrive.R
-import dev.lyricdrive.ui.components.FluidBackground
+import dev.lyricdrive.data.settings.BackgroundMode
+import dev.lyricdrive.ui.components.ThemeBackground
 import dev.lyricdrive.ui.theme.LyricPalette
 
 @Composable
@@ -36,7 +37,7 @@ fun OnboardingScreen() {
     val requestAudio = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     Box(Modifier.fillMaxSize()) {
-        FluidBackground(LyricPalette.DEFAULT, energy = 0.3f, playing = true)
+        ThemeBackground(BackgroundMode.ALBUM_FLUID, LyricPalette.DEFAULT, Modifier.fillMaxSize())
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),
             verticalArrangement = Arrangement.Center,

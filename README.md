@@ -80,17 +80,28 @@ word timing produces a continuous left-to-right fill across wrapped lines.
 **Touch:** rows are ≥ 64 dp with ripple feedback. Dragging the list pauses auto-scroll; it resumes
 4 s after release, or immediately via the "Resume auto-scroll" pill.
 
-## Settings (⚙ in the phone app — also applied to the car screen)
+## Settings (⚙ in the phone app — applied to the car screen too)
 
-- **Word-by-word highlight:** *Auto* (real word timestamps when present, otherwise estimated from
-  each line's duration), *Only real word timing*, or *Off*. Most LRCLIB lyrics are line-timed only,
-  so *Auto* is what makes the fill move for most songs; the header shows which kind you're seeing.
-- **Animation style:** Fluid, Karaoke (accent-colored fill, flat list), Focus (spotlight), Bouncy,
-  Minimal (no motion).
-- **Background:** album colors (moving / still), blurred album art, Aurora / Sunset / Ocean
-  presets, or black.
-- **Night mode:** *Auto* darkens colors, scrim and text when the car reports night (headlights /
-  light sensor via `CarContext.isDarkMode`) or the phone is in dark mode; or *Always* / *Never*.
+The phone and the car draw with the **same renderer** (`render/`), so every option below looks
+identical on Android Auto. The settings screen has a live preview at the top.
+
+- **Theme:** album colors (moving / still), blurred album art, Spectrum, Aurora, Sunset, Ocean,
+  Nebula (stars), Synthwave (grid + RGB split, monospace), Lofi vinyl (grain, vignette, spinning
+  record, serif), Disco (cycling neon, spotlights, scanlines, pulses on sung words), Black (OLED).
+- **Animation:** Fluid, Karaoke, Wave, Typewriter, Spotlight, Bouncy, Cinematic (two subtitle
+  lines), Glance & drive (huge current line, sub-100 ms snaps), Single line (+ progress bar),
+  Minimal.
+- **Highlight color:** Auto (theme), Album opposite (complementary hue), White, Amber, Crimson,
+  Ice blue, Emerald.
+- **Word timing:** Auto (real word timestamps when the source has them — e.g. TTML or enhanced
+  LRC — otherwise estimated), Real only, Off. The header shows which one you're seeing.
+- **Brightness:** Auto (car night signal / phone dark mode), Light sensor (phone sensor: day, dim
+  for tunnels/overcast, night), Always dark, Always bright.
+- **Android Auto → Full screen when parked:** the cover panel slides in and all lines show when
+  the car is parked; it collapses to the 3-line view as soon as you drive.
+
+Disco pulses are rate-limited to 3 per second and toned down while moving. Players don't share
+their audio, so Spectrum and Disco follow the lyrics' word onsets, not the actual waveform.
 
 ## Permissions
 
