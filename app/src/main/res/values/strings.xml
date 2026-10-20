@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">LyricDrive</string>
+    <string name="notification_listener_label">LyricDrive now-playing reader</string>
+    <string name="onboarding_title">Lyrics for whatever you\'re playing</string>
+    <string name="onboarding_body">LyricDrive reads the now-playing info of Spotify, YouTube Music, Metrolist, Deezer, Tidal and local players. Android only shares that with apps that have notification access.</string>
+    <string name="onboarding_grant">Grant notification access</string>
+    <string name="onboarding_restricted_hint">Sideloaded? If the switch is greyed out, open App info → ⋮ → Allow restricted settings, then try again.</string>
+    <string name="onboarding_local_files">Allow reading local music (embedded lyrics)</string>
+    <string name="nothing_playing">Nothing playing</string>
+    <string name="nothing_playing_hint">Start music in any app.</string>
+    <string name="searching">Finding lyrics…</string>
+    <string name="instrumental">Instrumental</string>
+    <string name="no_lyrics">No lyrics found</string>
+    <string name="offline">Lyrics unavailable offline — retrying when signal returns</string>
+    <string name="unsynced_notice">Not time-synced</string>
+    <string name="resume_auto_scroll">Resume auto-scroll</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="mirror_root_title">Now playing with lyrics</string>
+    <string name="car_resume">Follow</string>
+</resources>
