@@ -15,6 +15,7 @@ import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.data.sensors.AmbientLevel
 import dev.lyricdrive.data.settings.AnimationStyle
+import dev.lyricdrive.data.settings.CarLayout
 import dev.lyricdrive.data.settings.LyricSettings
 import kotlin.math.abs
 import kotlin.math.exp
@@ -31,7 +32,7 @@ class LyricsController(
     private val source: SceneSource,
     private val settings: () -> LyricSettings,
     private val density: Float,
-    /** Car is moving: glanceable layout, no manual browsing, no party effects. */
+    /** Car is moving: no manual browsing, toned-down party effects, compact layout if chosen. */
     private val isMoving: () -> Boolean = { false },
     /** Car night signal or phone dark theme. */
     private val nightSignal: () -> Boolean = { false },
@@ -198,7 +199,7 @@ class LyricsController(
                 filledCharacters = filled,
                 lineProgress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
                 scrollY = scroll.value,
-                compact = moving,
+                compact = moving && prefs.carLayout == CarLayout.COMPACT,
                 style = style,
                 theme = theme,
                 highlight = highlight,

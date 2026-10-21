@@ -62,6 +62,7 @@ import dev.lyricdrive.data.audio.OutputRoute
 import dev.lyricdrive.data.settings.AnimationStyle
 import dev.lyricdrive.data.settings.DEFAULT_LYRICS_PLUS_SERVER
 import dev.lyricdrive.data.settings.BackgroundMode
+import dev.lyricdrive.data.settings.CarLayout
 import dev.lyricdrive.data.settings.HighlightColor
 import dev.lyricdrive.data.settings.NightMode
 import dev.lyricdrive.render.LiveSceneSource
@@ -112,6 +113,11 @@ private val HIGHLIGHT_CHOICES = listOf(
     Choice(HighlightColor.CRIMSON, R.string.hl_crimson),
     Choice(HighlightColor.ICE_BLUE, R.string.hl_ice),
     Choice(HighlightColor.EMERALD, R.string.hl_emerald),
+)
+
+private val CAR_LAYOUT_CHOICES = listOf(
+    Choice(CarLayout.PHONE, R.string.car_layout_phone, R.string.car_layout_phone_desc),
+    Choice(CarLayout.COMPACT, R.string.car_layout_compact, R.string.car_layout_compact_desc),
 )
 
 private val NIGHT_CHOICES = listOf(
@@ -204,6 +210,10 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Segmented(NIGHT_CHOICES, settings.nightMode) { v -> update { it.copy(nightMode = v) } }
                 }
                 Section(R.string.section_car) {
+                    Text(stringResource(R.string.car_layout), color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Segmented(CAR_LAYOUT_CHOICES, settings.carLayout) { v -> update { it.copy(carLayout = v) } }
+                    Spacer(Modifier.height(12.dp))
                     SwitchRow(
                         title = stringResource(R.string.car_full_screen),
                         hint = stringResource(R.string.car_full_screen_desc),

@@ -60,6 +60,15 @@ enum class BackgroundMode {
     BLACK,
 }
 
+/** How the Android Auto screen looks while the car is moving. */
+enum class CarLayout {
+    /** Same as the phone: every line, blur, word sync and all animations. */
+    PHONE,
+
+    /** Previous / current / next line only, no blur (the older driving view). */
+    COMPACT,
+}
+
 /** Color of the sung part of the active line. */
 enum class HighlightColor(val argb: Int?) {
     /** Chosen by the theme / animation style. */
@@ -98,6 +107,7 @@ data class LyricSettings(
     val highlightColor: HighlightColor = HighlightColor.AUTO,
     /** Android Auto: expand to the full-screen layout (cover panel + all lines) when parked. */
     val fullScreenWhenParked: Boolean = true,
+    val carLayout: CarLayout = CarLayout.PHONE,
     /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
     val audioDelayMs: Int = 0,
     /** Optional LyricsPlus server base URL (empty = disabled). */
@@ -122,6 +132,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_NIGHT, next.nightMode.name)
             .putString(KEY_HIGHLIGHT, next.highlightColor.name)
             .putBoolean(KEY_FULL_SCREEN_PARKED, next.fullScreenWhenParked)
+            .putString(KEY_CAR_LAYOUT, next.carLayout.name)
             .putInt(KEY_AUDIO_DELAY, next.audioDelayMs)
             .putString(KEY_LYRICS_PLUS, next.lyricsPlusServer)
             .putString(KEY_ROUTE_DELAYS, next.routeDelaysMs.entries.joinToString(",") { "${it.key}=${it.value}" })
@@ -139,6 +150,7 @@ class SettingsRepository(context: Context) {
             nightMode = enumOr(KEY_NIGHT, NightMode.AUTO),
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),
+            carLayout = enumOr(KEY_CAR_LAYOUT, CarLayout.PHONE),
             audioDelayMs = prefs.getInt(KEY_AUDIO_DELAY, 0),
             lyricsPlusServer = prefs.getString(KEY_LYRICS_PLUS, null) ?: DEFAULT_LYRICS_PLUS_SERVER,
             routeDelaysMs = prefs.getString(KEY_ROUTE_DELAYS, "").orEmpty().split(',').mapNotNull { entry ->
@@ -170,6 +182,7 @@ class SettingsRepository(context: Context) {
         const val KEY_NIGHT = "night_mode"
         const val KEY_HIGHLIGHT = "highlight_color"
         const val KEY_FULL_SCREEN_PARKED = "full_screen_parked"
+        const val KEY_CAR_LAYOUT = "car_layout"
         const val KEY_AUDIO_DELAY = "audio_delay_ms"
         const val KEY_LYRICS_PLUS = "lyrics_plus_server"
         const val KEY_ROUTE_DELAYS = "route_delays"

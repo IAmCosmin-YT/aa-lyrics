@@ -107,6 +107,8 @@ identical on Android Auto. The settings screen has a live preview at the top.
   automatically) plus per-song nudges from the sync
   button on the lyrics screen. Line-synced lyrics get word timing estimated from syllables at a
   rate measured per song.
+- **Android Auto → Layout while driving:** *Same as phone* (default: every line, blur, word sync,
+  all animations) or *Compact* (previous / current / next only). Drag-to-browse is off while moving.
 - **Android Auto → Full screen when parked:** the cover panel slides in and all lines show when
   the car is parked; it collapses to the 3-line view as soon as you drive.
 

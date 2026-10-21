@@ -73,7 +73,6 @@
     <string name="night_never_desc">Never darken</string>
     <string name="car_full_screen">Full screen when parked</string>
     <string name="car_full_screen_desc">When the car is parked, slide in the album cover and show every line. Switches back to the compact view as soon as you drive off.</string>
-    <string name="car_driving_note">While driving, the car shows a compact 3-line view, browsing is off and party effects are toned down.</string>
     <string name="anim_fluid_desc">Soft wipe, sung words float up, held notes glow</string>
     <string name="anim_karaoke_desc">Outlined text, crisp color wipe like a karaoke bar</string>
     <string name="anim_ball">Bouncing ball</string>
@@ -98,4 +97,10 @@
     <string name="sources_desc">Word-by-word timing comes from BetterLyrics, Unison and LyricsPlus, then LRCLIB (line timing) and lyrics embedded in local files. LyricsPlus uses the server below; you can point it at your own.</string>
     <string name="lyrics_plus_server">LyricsPlus server</string>
     <string name="disable">Disable</string>
+    <string name="car_layout">Layout while driving</string>
+    <string name="car_layout_phone">Same as phone</string>
+    <string name="car_layout_phone_desc">Every line, blur, word sync and all animations, exactly like the phone</string>
+    <string name="car_layout_compact">Compact</string>
+    <string name="car_layout_compact_desc">Only the previous, current and next line, no blur (the older driving view)</string>
+    <string name="car_driving_note">Open LyricDrive from the Android Auto launcher for this view. The small media card next to Maps is drawn by Android Auto itself and can only show the current line as text. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
 </resources>
