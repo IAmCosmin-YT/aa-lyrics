@@ -16,8 +16,8 @@ drawing surface. So LyricDrive ships two complementary car experiences:
 | Controls | Play/pause/skip/seek forwarded to the real player | Tap a line to seek, swipe/pan to browse, action strip |
 | Distribution | Works with Play-Store-style media apps | Navigation category → **sideload + AA developer mode** |
 
-Pick LyricDrive as the media source in AA to get the mirror; open the LyricDrive launcher icon in AA
-for the full-screen view.
+Pick **LyricDrive** as the media source in AA to get the mirror (Android Auto's own player, text
+only); open **LyricDrive Full screen** from the AA app launcher for the animated view.
 
 ## Driving behaviour
 

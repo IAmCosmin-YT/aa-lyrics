@@ -103,4 +103,5 @@
     <string name="car_layout_compact">Compact</string>
     <string name="car_layout_compact_desc">Only the previous, current and next line, no blur (the older driving view)</string>
     <string name="car_driving_note">Open LyricDrive from the Android Auto launcher for this view. The small media card next to Maps is drawn by Android Auto itself and can only show the current line as text. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
+    <string name="car_app_label">LyricDrive Full screen</string>
 </resources>

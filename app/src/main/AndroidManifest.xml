@@ -68,9 +68,12 @@
         </service>
 
         <!-- Full-screen lyrics on the car display (Car App Library, surface rendering). -->
+        <!-- Own label/icon so it's distinguishable from the media entry in the Android Auto launcher. -->
         <service
             android:name=".car.LyricsCarAppService"
             android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/car_app_label"
             tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
