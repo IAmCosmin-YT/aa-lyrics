@@ -13,8 +13,10 @@ android {
         applicationId = "dev.lyricdrive"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // CI stamps the run number so the installed build can be identified in Settings.
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "1.0.$build"
     }
 
     buildTypes {

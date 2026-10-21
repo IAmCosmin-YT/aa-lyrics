@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.lyricdrive.BuildConfig
 import dev.lyricdrive.LyricDriveApp
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
@@ -222,6 +223,13 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.car_driving_note), color = Muted, fontSize = 12.sp)
                 }
+                Text(
+                    stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
+                    color = Muted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    textAlign = TextAlign.Center,
+                )
                 Spacer(Modifier.height(24.dp))
             }
         }

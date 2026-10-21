@@ -20,5 +20,5 @@ jobs:
         run: ./gradlew :app:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: lyricdrive-debug-apk
+          name: lyricdrive-debug-apk-${{ github.run_number }}
           path: app/build/outputs/apk/debug/*.apk
