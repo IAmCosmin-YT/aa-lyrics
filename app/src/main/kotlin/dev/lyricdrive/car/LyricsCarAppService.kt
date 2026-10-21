@@ -19,7 +19,15 @@ class LyricsCarAppService : CarAppService() {
                 .build()
         }
 
-    override fun onCreateSession(sessionInfo: SessionInfo): Session = LyricsCarSession()
+    override fun onCreate() {
+        super.onCreate()
+        CarDiagnostics.mark(this, CarDiagnostics.Step.SERVICE)
+    }
+
+    override fun onCreateSession(sessionInfo: SessionInfo): Session {
+        CarDiagnostics.mark(this, CarDiagnostics.Step.SESSION)
+        return LyricsCarSession()
+    }
 }
 
 class LyricsCarSession : Session() {

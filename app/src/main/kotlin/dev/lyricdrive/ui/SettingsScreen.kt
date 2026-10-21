@@ -36,7 +36,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +51,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.lyricdrive.BuildConfig
 import dev.lyricdrive.LyricDriveApp
+import dev.lyricdrive.car.CarDiagnostics
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.data.audio.OutputRoute
@@ -232,6 +236,8 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     ) { v -> update { it.copy(fullScreenWhenParked = v) } }
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.car_driving_note), color = Muted, fontSize = 12.sp)
+                    Spacer(Modifier.height(16.dp))
+                    CarDiagnosticsCard()
                 }
                 Text(
                     stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
@@ -451,4 +457,31 @@ private fun routeLabel(route: OutputRoute): Int = when (route) {
     OutputRoute.BLUETOOTH -> R.string.route_bluetooth
     OutputRoute.WIRED -> R.string.route_wired
     OutputRoute.SPEAKER -> R.string.route_speaker
+}
+
+/** What happened the last time Android Auto tried to open the full-screen app, copyable for support. */
+@Composable
+private fun CarDiagnosticsCard() {
+    val context = LocalContext.current
+    var report by remember { mutableStateOf(CarDiagnostics.report(context)) }
+    Text(stringResource(R.string.diagnostics_title), color = Color.White, fontWeight = FontWeight.SemiBold)
+    Text(stringResource(R.string.diagnostics_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        report,
+        color = Color.White.copy(alpha = 0.85f),
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        fontFamily = FontFamily.Monospace,
+        maxLines = 30,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.35f)).padding(10.dp),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = {
+            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("LyricDrive diagnostics", report))
+        }) { Text(stringResource(R.string.diagnostics_copy), color = Color.White) }
+        TextButton(onClick = { report = CarDiagnostics.report(context) }) { Text(stringResource(R.string.diagnostics_refresh), color = Color.White) }
+        TextButton(onClick = { CarDiagnostics.clear(context); report = CarDiagnostics.report(context) }) { Text(stringResource(R.string.reset), color = Color.White) }
+    }
 }

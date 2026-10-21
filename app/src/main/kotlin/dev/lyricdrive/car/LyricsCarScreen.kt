@@ -28,6 +28,7 @@ class LyricsCarScreen(carContext: CarContext) : Screen(carContext) {
     private val renderer = LyricsSurfaceRenderer(carContext, graph, driving) { invalidate() }
 
     init {
+        CarDiagnostics.mark(carContext, CarDiagnostics.Step.SCREEN)
         lifecycle.addObserver(driving)
         lifecycle.addObserver(renderer)
         nowPlaying.refreshSessions()
@@ -37,6 +38,7 @@ class LyricsCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     override fun onGetTemplate(): Template {
+        CarDiagnostics.mark(carContext, CarDiagnostics.Step.TEMPLATE)
         val playing = nowPlaying.snapshot.value.isPlaying
         val strip = ActionStrip.Builder()
             .addAction(iconAction(R.drawable.ic_skip_previous) { nowPlaying.skipToPrevious() })

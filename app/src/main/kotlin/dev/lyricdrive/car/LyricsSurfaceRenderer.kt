@@ -38,11 +38,14 @@ class LyricsSurfaceRenderer(
     private val choreographer = Choreographer.getInstance()
     private var running = false
     private var frameCount = 0L
+    private var firstFrameMarked = false
+    private var errorRecorded = false
 
     val isFollowing: Boolean get() = controller?.isFollowing ?: true
 
     private val surfaceCallback = object : SurfaceCallback {
         override fun onSurfaceAvailable(container: SurfaceContainer) {
+            CarDiagnostics.mark(carContext, CarDiagnostics.Step.SURFACE)
             surface = container.surface
             width = container.width
             height = container.height
@@ -139,6 +142,16 @@ class LyricsSurfaceRenderer(
         }
         try {
             controller.draw(canvas, width, height, visibleArea, frameTimeNanos)
+            if (!firstFrameMarked) {
+                firstFrameMarked = true
+                CarDiagnostics.mark(carContext, CarDiagnostics.Step.FRAME)
+            }
+        } catch (e: RuntimeException) {
+            // Keep the car screen alive; record the failure for the diagnostics report.
+            if (!errorRecorded) {
+                errorRecorded = true
+                CarDiagnostics.recordError(carContext, "draw", e)
+            }
         } finally {
             surface.unlockCanvasAndPost(canvas)
         }
