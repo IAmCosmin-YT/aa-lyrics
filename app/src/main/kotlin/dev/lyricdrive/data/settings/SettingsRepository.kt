@@ -60,6 +60,15 @@ enum class BackgroundMode {
     BLACK,
 }
 
+/** Which LyricDrive entry Android Auto shows (it only lists one per app). */
+enum class AndroidAutoMode {
+    /** Animated phone-style lyrics. Android Auto treats it as a navigation app, so it replaces Maps. */
+    FULL_SCREEN,
+
+    /** Android Auto's own media player next to Maps, showing the current line as the title. */
+    MEDIA_PLAYER,
+}
+
 /** How the Android Auto screen looks while the car is moving. */
 enum class CarLayout {
     /** Same as the phone: every line, blur, word sync and all animations. */
@@ -108,6 +117,7 @@ data class LyricSettings(
     /** Android Auto: expand to the full-screen layout (cover panel + all lines) when parked. */
     val fullScreenWhenParked: Boolean = true,
     val carLayout: CarLayout = CarLayout.PHONE,
+    val androidAutoMode: AndroidAutoMode = AndroidAutoMode.FULL_SCREEN,
     /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
     val audioDelayMs: Int = 0,
     /** Optional LyricsPlus server base URL (empty = disabled). */
@@ -133,6 +143,7 @@ class SettingsRepository(context: Context) {
             .putString(KEY_HIGHLIGHT, next.highlightColor.name)
             .putBoolean(KEY_FULL_SCREEN_PARKED, next.fullScreenWhenParked)
             .putString(KEY_CAR_LAYOUT, next.carLayout.name)
+            .putString(KEY_AA_MODE, next.androidAutoMode.name)
             .putInt(KEY_AUDIO_DELAY, next.audioDelayMs)
             .putString(KEY_LYRICS_PLUS, next.lyricsPlusServer)
             .putString(KEY_ROUTE_DELAYS, next.routeDelaysMs.entries.joinToString(",") { "${it.key}=${it.value}" })
@@ -151,6 +162,7 @@ class SettingsRepository(context: Context) {
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),
             carLayout = enumOr(KEY_CAR_LAYOUT, CarLayout.PHONE),
+            androidAutoMode = enumOr(KEY_AA_MODE, AndroidAutoMode.FULL_SCREEN),
             audioDelayMs = prefs.getInt(KEY_AUDIO_DELAY, 0),
             lyricsPlusServer = prefs.getString(KEY_LYRICS_PLUS, null) ?: DEFAULT_LYRICS_PLUS_SERVER,
             routeDelaysMs = prefs.getString(KEY_ROUTE_DELAYS, "").orEmpty().split(',').mapNotNull { entry ->
@@ -183,6 +195,7 @@ class SettingsRepository(context: Context) {
         const val KEY_HIGHLIGHT = "highlight_color"
         const val KEY_FULL_SCREEN_PARKED = "full_screen_parked"
         const val KEY_CAR_LAYOUT = "car_layout"
+        const val KEY_AA_MODE = "android_auto_mode"
         const val KEY_AUDIO_DELAY = "audio_delay_ms"
         const val KEY_LYRICS_PLUS = "lyrics_plus_server"
         const val KEY_ROUTE_DELAYS = "route_delays"

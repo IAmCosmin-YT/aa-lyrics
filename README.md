@@ -16,8 +16,10 @@ drawing surface. So LyricDrive ships two complementary car experiences:
 | Controls | Play/pause/skip/seek forwarded to the real player | Tap a line to seek, swipe/pan to browse, action strip |
 | Distribution | Works with Play-Store-style media apps | Navigation category → **sideload + AA developer mode** |
 
-Pick **LyricDrive** as the media source in AA to get the mirror (Android Auto's own player, text
-only); open **LyricDrive Full screen** from the AA app launcher for the animated view.
+Android Auto lists only one entry per app (and prefers the media player when both exist), so
+**Settings → Android Auto → What Android Auto shows** enables exactly one of them: *Full screen
+lyrics* (default, replaces Maps while open) or *Media player* (next to Maps, text only).
+Reconnect the phone to the car after switching.
 
 ## Driving behaviour
 

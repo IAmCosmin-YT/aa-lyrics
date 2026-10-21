@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import dev.lyricdrive.core.domain.LyricsPipeline
 import dev.lyricdrive.core.domain.LyricsRepository
+import dev.lyricdrive.car.AndroidAutoComponents
 import dev.lyricdrive.data.audio.OutputRouteMonitor
 import dev.lyricdrive.data.embedded.EmbeddedLyricsSource
 import dev.lyricdrive.data.local.LyricsDatabase
@@ -22,6 +23,10 @@ import dev.lyricdrive.domain.NowPlayingSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 /** Manual DI: one instance per process, created by [LyricDriveApp]. */
 class AppGraph(app: Application) {
@@ -39,6 +44,15 @@ class AppGraph(app: Application) {
     val settings = SettingsRepository(app)
 
     val ambientLight = AmbientLightMonitor(app)
+
+    init {
+        // Keep exactly one Android Auto entry enabled, following the setting.
+        settings.settings
+            .map { it.androidAutoMode }
+            .distinctUntilChanged()
+            .onEach { AndroidAutoComponents.apply(app, it) }
+            .launchIn(appScope)
+    }
 
     val outputRoute = OutputRouteMonitor(app)
 

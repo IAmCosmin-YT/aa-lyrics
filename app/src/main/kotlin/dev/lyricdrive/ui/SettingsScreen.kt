@@ -60,6 +60,7 @@ import dev.lyricdrive.LyricDriveApp
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.data.audio.OutputRoute
+import dev.lyricdrive.data.settings.AndroidAutoMode
 import dev.lyricdrive.data.settings.AnimationStyle
 import dev.lyricdrive.data.settings.DEFAULT_LYRICS_PLUS_SERVER
 import dev.lyricdrive.data.settings.BackgroundMode
@@ -114,6 +115,11 @@ private val HIGHLIGHT_CHOICES = listOf(
     Choice(HighlightColor.CRIMSON, R.string.hl_crimson),
     Choice(HighlightColor.ICE_BLUE, R.string.hl_ice),
     Choice(HighlightColor.EMERALD, R.string.hl_emerald),
+)
+
+private val AA_MODE_CHOICES = listOf(
+    Choice(AndroidAutoMode.FULL_SCREEN, R.string.aa_mode_full, R.string.aa_mode_full_desc),
+    Choice(AndroidAutoMode.MEDIA_PLAYER, R.string.aa_mode_media, R.string.aa_mode_media_desc),
 )
 
 private val CAR_LAYOUT_CHOICES = listOf(
@@ -211,6 +217,10 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Segmented(NIGHT_CHOICES, settings.nightMode) { v -> update { it.copy(nightMode = v) } }
                 }
                 Section(R.string.section_car) {
+                    Text(stringResource(R.string.aa_mode), color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Segmented(AA_MODE_CHOICES, settings.androidAutoMode) { v -> update { it.copy(androidAutoMode = v) } }
+                    Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.car_layout), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
                     Segmented(CAR_LAYOUT_CHOICES, settings.carLayout) { v -> update { it.copy(carLayout = v) } }

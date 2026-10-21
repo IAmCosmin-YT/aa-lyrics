@@ -104,5 +104,10 @@
     <string name="car_layout_compact_desc">Only the previous, current and next line, no blur (the older driving view)</string>
     <string name="car_app_label">LyricDrive Full screen</string>
     <string name="version_label">LyricDrive %1$s</string>
-    <string name="car_driving_note">To see this view in the car, open the app grid on the Android Auto screen and start “LyricDrive Full screen” (it replaces Google Maps while open). The player next to Maps is drawn by Android Auto itself and can only show the current line as text. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
+    <string name="aa_mode">What Android Auto shows</string>
+    <string name="aa_mode_full">Full screen lyrics</string>
+    <string name="aa_mode_full_desc">The animated lyrics, same as the phone. Android Auto runs it as a navigation app, so it replaces Google Maps while open. Disconnect and reconnect the phone to the car after switching.</string>
+    <string name="aa_mode_media">Media player</string>
+    <string name="aa_mode_media_desc">Android Auto\'s own player next to Maps, with the current line as the title (text only, no animations). Disconnect and reconnect the phone to the car after switching.</string>
+    <string name="car_driving_note">Android Auto only lists one LyricDrive entry, so this switch picks which one it gets. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
 </resources>
