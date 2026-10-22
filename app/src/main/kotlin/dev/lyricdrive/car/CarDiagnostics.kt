@@ -58,7 +58,9 @@ object CarDiagnostics {
             appendLine("LyricDrive ${BuildConfig.VERSION_NAME}, Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("Android Auto: $aa")
             appendLine("Installed by: ${InstallSource.installer(context) ?: "adb / file (not Google Play)"}")
-            appendLine("Full-screen car app: ${state(LyricsCarAppService::class.java)}")
+            appendLine("Variant: ${BuildConfig.FLAVOR}")
+            appendLine("Beside-Maps car app (weather): ${state(LyricsWeatherCarAppService::class.java)}")
+            appendLine("Full-screen car app (navigation): ${state(LyricsCarAppService::class.java)}")
             appendLine("Media player service: ${state(LyricsMirrorMediaService::class.java)}")
             Step.entries.forEach { appendLine("${it.label}: ${ago(prefs.getLong(it.name, 0))}") }
             val error = prefs.getString(KEY_ERROR, null)

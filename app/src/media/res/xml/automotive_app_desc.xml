@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Media variant: Android Auto's own player shows the lyrics. Works when sideloaded. -->
 <automotiveApp>
     <uses name="media" />
-    <uses name="template" />
 </automotiveApp>

@@ -66,6 +66,8 @@ import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.data.audio.OutputRoute
 import dev.lyricdrive.data.settings.AndroidAutoMode
+import dev.lyricdrive.data.settings.availableAndroidAutoModes
+import dev.lyricdrive.data.settings.isCarVariant
 import dev.lyricdrive.data.settings.AnimationStyle
 import dev.lyricdrive.data.settings.DEFAULT_LYRICS_PLUS_SERVER
 import dev.lyricdrive.data.settings.BackgroundMode
@@ -123,9 +125,10 @@ private val HIGHLIGHT_CHOICES = listOf(
 )
 
 private val AA_MODE_CHOICES = listOf(
-    Choice(AndroidAutoMode.MEDIA_PLAYER, R.string.aa_mode_media, R.string.aa_mode_media_desc),
+    Choice(AndroidAutoMode.BESIDE_MAPS, R.string.aa_mode_beside, R.string.aa_mode_beside_desc),
     Choice(AndroidAutoMode.FULL_SCREEN, R.string.aa_mode_full, R.string.aa_mode_full_desc),
-)
+    Choice(AndroidAutoMode.MEDIA_PLAYER, R.string.aa_mode_media, R.string.aa_mode_media_desc),
+).filter { it.value in availableAndroidAutoModes() }
 
 private val CAR_LAYOUT_CHOICES = listOf(
     Choice(CarLayout.PHONE, R.string.car_layout_phone, R.string.car_layout_phone_desc),
@@ -225,9 +228,13 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                 Section(R.string.section_car) {
                     Text(stringResource(R.string.aa_mode), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
-                    Segmented(AA_MODE_CHOICES, settings.androidAutoMode) { v -> update { it.copy(androidAutoMode = v) } }
+                    if (AA_MODE_CHOICES.size > 1) {
+                        Segmented(AA_MODE_CHOICES, settings.androidAutoMode) { v -> update { it.copy(androidAutoMode = v) } }
+                    } else {
+                        Text(stringResource(R.string.aa_mode_media_only), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
+                    }
                     val fromPlay = remember { InstallSource.isFromPlay(context) }
-                    if (settings.androidAutoMode == AndroidAutoMode.FULL_SCREEN && !fromPlay) {
+                    if (isCarVariant && !fromPlay) {
                         Text(
                             stringResource(R.string.aa_full_needs_play),
                             color = Color(0xFFFFB74D),
@@ -237,7 +244,7 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                         )
                     }
                     Spacer(Modifier.height(12.dp))
-                    SwitchRow(
+                    if (!isCarVariant) SwitchRow(
                         title = stringResource(R.string.aa_art_card),
                         hint = stringResource(R.string.aa_art_card_desc),
                         checked = settings.lyricsArtCard,

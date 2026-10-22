@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Car variant: Car App Library only. Declaring "media" as well makes Android Auto treat the app
+    as a media app, so it must be "template" alone.
+-->
+<automotiveApp>
+    <uses name="template" />
+</automotiveApp>

@@ -104,8 +104,6 @@
     <string name="car_layout_compact_desc">Only the previous, current and next line, no blur (the older driving view)</string>
     <string name="car_app_label">LyricDrive Full screen</string>
     <string name="version_label">LyricDrive %1$s</string>
-    <string name="aa_mode">What Android Auto shows</string>
-    <string name="aa_mode_full">Full screen lyrics</string>
     <string name="aa_mode_media">Media player</string>
     <string name="car_driving_note">Android Auto only lists one LyricDrive entry, so this switch picks which one it gets. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
     <string name="diagnostics_title">Android Auto diagnostics</string>
@@ -115,6 +113,11 @@
     <string name="aa_mode_media_desc">Works with this sideloaded app. Android Auto\'s own player next to Maps; with the lyrics card on, the album art shows the current line with a word-by-word fill. Reconnect to the car after switching.</string>
     <string name="aa_art_card">Lyrics card as album art</string>
     <string name="aa_art_card_desc">In the media player, show the current and next line in place of the cover. It changes once per line (Android Auto can\'t refresh artwork fast enough for word-by-word).</string>
-    <string name="aa_mode_full_desc">The animated phone-style lyrics, replacing Maps while open. Android Auto only shows this when the app is installed through Google Play (Internal App Sharing works, see the README). Reconnect to the car after switching.</string>
-    <string name="aa_full_needs_play">This copy wasn\'t installed through Google Play, so Android Auto will hide the full-screen app and you\'ll see nothing. Install it via Google Play Internal App Sharing (README → “Full screen in the car”), or switch back to Media player.</string>
+    <string name="aa_mode">Where the lyrics appear</string>
+    <string name="aa_mode_beside">Beside Maps</string>
+    <string name="aa_mode_beside_desc">Animated lyrics in their own half of the screen, next to Google Maps (split view on wide screens). LyricDrive registers as a weather app so Maps keeps navigating. Reconnect to the car after switching.</string>
+    <string name="aa_mode_full">Full screen</string>
+    <string name="aa_mode_full_desc">Animated lyrics on the whole screen. LyricDrive registers as a navigation app, so it replaces Google Maps while open. Reconnect to the car after switching.</string>
+    <string name="aa_mode_media_only">This is the media variant: lyrics show in Android Auto\'s own player next to Maps. For animated lyrics in the car, install the car variant through Google Play Internal App Sharing (see the README).</string>
+    <string name="aa_full_needs_play">This copy wasn\'t installed through Google Play, so Android Auto will hide LyricDrive. Upload the car APK to Google Play Internal App Sharing and install it from the link (README → “Lyrics in the car”).</string>
 </resources>

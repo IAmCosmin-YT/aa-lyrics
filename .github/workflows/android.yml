@@ -16,9 +16,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Core unit tests
         run: ./gradlew :core:test --stacktrace
-      - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Assemble debug APKs (car + media variants)
+        run: ./gradlew :app:assembleCarDebug :app:assembleMediaDebug --stacktrace
+      - name: Name APKs
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/car/debug/*.apk dist/LyricDrive-car-${{ github.run_number }}.apk
+          cp app/build/outputs/apk/media/debug/*.apk dist/LyricDrive-media-${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: lyricdrive-debug-apk-${{ github.run_number }}
-          path: app/build/outputs/apk/debug/*.apk
+          name: lyricdrive-car-apk-${{ github.run_number }}
+          path: dist/LyricDrive-car-*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lyricdrive-media-apk-${{ github.run_number }}
+          path: dist/LyricDrive-media-*.apk

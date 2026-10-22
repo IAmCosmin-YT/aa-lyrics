@@ -7,12 +7,14 @@ import dev.lyricdrive.data.settings.AndroidAutoMode
 import dev.lyricdrive.service.LyricsMirrorMediaService
 
 /**
- * Android Auto lists only one entry per app, and when an app has both a media service and a car
- * app it picks the media player. So exactly one of the two is enabled, per the user's choice.
+ * Enables exactly the one component Android Auto should see for the chosen mode. A service's
+ * category is fixed in the manifest, so the weather/navigation twins are switched on and off;
+ * Android Auto picks the change up when it next connects.
  */
 object AndroidAutoComponents {
     fun apply(context: Context, mode: AndroidAutoMode) {
         val pm = context.packageManager
+        set(pm, ComponentName(context, LyricsWeatherCarAppService::class.java), mode == AndroidAutoMode.BESIDE_MAPS)
         set(pm, ComponentName(context, LyricsCarAppService::class.java), mode == AndroidAutoMode.FULL_SCREEN)
         set(pm, ComponentName(context, LyricsMirrorMediaService::class.java), mode == AndroidAutoMode.MEDIA_PLAYER)
     }

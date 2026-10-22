@@ -8,7 +8,8 @@ import androidx.car.app.Session
 import androidx.car.app.SessionInfo
 import androidx.car.app.validation.HostValidator
 
-class LyricsCarAppService : CarAppService() {
+/** Registered under the NAVIGATION category: takes the navigation slot (replaces Maps). */
+open class LyricsCarAppService : CarAppService() {
     override fun createHostValidator(): HostValidator =
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             // Lets the Desktop Head Unit and sideloaded hosts connect to debug builds.
@@ -29,6 +30,12 @@ class LyricsCarAppService : CarAppService() {
         return LyricsCarSession()
     }
 }
+
+/**
+ * Same app registered under the WEATHER category: Android Auto keeps Maps in the navigation slot
+ * and shows this beside it in split view, still with a full drawing surface.
+ */
+class LyricsWeatherCarAppService : LyricsCarAppService()
 
 class LyricsCarSession : Session() {
     override fun onCreateScreen(intent: Intent): Screen = LyricsCarScreen(carContext)

@@ -19,6 +19,28 @@ android {
         versionName = "1.0.$build"
     }
 
+    // Android Auto reads which app types the APK supports from a static XML, so the two ways of
+    // showing lyrics in the car are two variants of the same app (install one of them):
+    //  - car:   Car App Library app (animated lyrics beside or instead of Maps). Android Auto only
+    //           lists it when installed through Google Play (e.g. Internal App Sharing).
+    //  - media: media app (lyrics in Android Auto's own player); works when sideloaded.
+    flavorDimensions += "androidAuto"
+    productFlavors {
+        create("car") {
+            dimension = "androidAuto"
+            isDefault = true
+            versionNameSuffix = "-car"
+            manifestPlaceholders["carServiceEnabled"] = "true"
+            manifestPlaceholders["mediaServiceEnabled"] = "false"
+        }
+        create("media") {
+            dimension = "androidAuto"
+            versionNameSuffix = "-media"
+            manifestPlaceholders["carServiceEnabled"] = "false"
+            manifestPlaceholders["mediaServiceEnabled"] = "true"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

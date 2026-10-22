@@ -101,7 +101,9 @@ class LyricsController(
         driftTime += dt * (0.35f + 0.9f * source.energy) * if (source.isPlaying) 1f else 0.25f
 
         // Parked full-screen expansion.
-        val wantExpanded = supportsFullScreen && prefs.fullScreenWhenParked && !moving
+        // The cover panel needs a wide area; beside Maps the lyrics get a narrower split pane.
+        val wide = lyricsArea.width() > lyricsArea.height() * 1.4f
+        val wantExpanded = supportsFullScreen && prefs.fullScreenWhenParked && !moving && wide
         if (wantExpanded != expandedTarget) {
             expandedTarget = wantExpanded
             resumeFollowing()

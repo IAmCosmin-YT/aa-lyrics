@@ -60,8 +60,11 @@ enum class BackgroundMode {
     BLACK,
 }
 
-/** Which LyricDrive entry Android Auto shows (it only lists one per app). */
+/** How LyricDrive shows up in Android Auto. */
 enum class AndroidAutoMode {
+    /** Animated lyrics beside Google Maps (split view): registered as a weather app. Car variant. */
+    BESIDE_MAPS,
+
     /**
      * Animated phone-style lyrics. Android Auto treats it as a navigation app, so it replaces Maps.
      * Android Auto only lists such apps when installed from Google Play (incl. internal testing).
@@ -71,6 +74,14 @@ enum class AndroidAutoMode {
     /** Android Auto's own media player next to Maps, showing the current line as the title. */
     MEDIA_PLAYER,
 }
+
+/** True for the "car" build variant (Car App Library), false for the "media" variant. */
+val isCarVariant: Boolean get() = dev.lyricdrive.BuildConfig.FLAVOR == "car"
+
+fun availableAndroidAutoModes(): List<AndroidAutoMode> =
+    if (isCarVariant) listOf(AndroidAutoMode.BESIDE_MAPS, AndroidAutoMode.FULL_SCREEN) else listOf(AndroidAutoMode.MEDIA_PLAYER)
+
+fun defaultAndroidAutoMode(): AndroidAutoMode = availableAndroidAutoModes().first()
 
 /** How the Android Auto screen looks while the car is moving. */
 enum class CarLayout {
@@ -120,7 +131,7 @@ data class LyricSettings(
     /** Android Auto: expand to the full-screen layout (cover panel + all lines) when parked. */
     val fullScreenWhenParked: Boolean = true,
     val carLayout: CarLayout = CarLayout.PHONE,
-    val androidAutoMode: AndroidAutoMode = AndroidAutoMode.MEDIA_PLAYER,
+    val androidAutoMode: AndroidAutoMode = defaultAndroidAutoMode(),
     /** Media player: show the current line as a card in place of the album art. */
     val lyricsArtCard: Boolean = true,
     /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
@@ -168,7 +179,9 @@ class SettingsRepository(context: Context) {
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),
             carLayout = enumOr(KEY_CAR_LAYOUT, CarLayout.PHONE),
-            androidAutoMode = enumOr(KEY_AA_MODE, AndroidAutoMode.MEDIA_PLAYER),
+            androidAutoMode = enumOr(KEY_AA_MODE, defaultAndroidAutoMode()).let { stored ->
+                if (stored in availableAndroidAutoModes()) stored else defaultAndroidAutoMode()
+            },
             lyricsArtCard = prefs.getBoolean(KEY_ART_CARD, true),
             audioDelayMs = prefs.getInt(KEY_AUDIO_DELAY, 0),
             lyricsPlusServer = prefs.getString(KEY_LYRICS_PLUS, null) ?: DEFAULT_LYRICS_PLUS_SERVER,
@@ -202,8 +215,7 @@ class SettingsRepository(context: Context) {
         const val KEY_HIGHLIGHT = "highlight_color"
         const val KEY_FULL_SCREEN_PARKED = "full_screen_parked"
         const val KEY_CAR_LAYOUT = "car_layout"
-        // v2: the default moved to the media player (sideloaded full-screen apps are hidden by Android Auto).
-        const val KEY_AA_MODE = "android_auto_mode_v2"
+        const val KEY_AA_MODE = "android_auto_mode_v3"
         const val KEY_ART_CARD = "aa_lyrics_card"
         const val KEY_AUDIO_DELAY = "audio_delay_ms"
         const val KEY_LYRICS_PLUS = "lyrics_plus_server"

@@ -60,6 +60,7 @@
         -->
         <service
             android:name=".service.LyricsMirrorMediaService"
+            android:enabled="${mediaServiceEnabled}"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
@@ -68,9 +69,29 @@
         </service>
 
         <!-- Full-screen lyrics on the car display (Car App Library, surface rendering). -->
-        <!-- Own label/icon so it's distinguishable from the media entry in the Android Auto launcher. -->
+        <!--
+            Car App Library services (car variant). The category decides where Android Auto puts
+            the app and is fixed per component, so there are two twins and only one is enabled at a
+            time (AndroidAutoComponents):
+            - WEATHER (default): Maps keeps the navigation slot; lyrics run beside it in split view.
+            - NAVIGATION: lyrics take the navigation slot, replacing Maps.
+            Both draw on the full-bleed NavigationTemplate surface (NAVIGATION_TEMPLATES + ACCESS_SURFACE).
+        -->
+        <service
+            android:name=".car.LyricsWeatherCarAppService"
+            android:enabled="${carServiceEnabled}"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.WEATHER" />
+            </intent-filter>
+        </service>
         <service
             android:name=".car.LyricsCarAppService"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/car_app_label"
