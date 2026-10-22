@@ -41,10 +41,25 @@ android {
         }
     }
 
+    // Play upload key, provided by CI from repository secrets (see README → "Play Store app bundle").
+    val uploadKeystore = System.getenv("UPLOAD_KEYSTORE_FILE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (uploadKeystore != null) {
+            create("upload") {
+                storeFile = uploadKeystore
+                storePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
+                keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // No shrinking: reflection-heavy libraries (Room, Car App Library) and the APK size
+            // don't justify the risk of a release-only crash in the car.
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("upload")
         }
     }
 

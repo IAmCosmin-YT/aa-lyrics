@@ -173,6 +173,27 @@ review, nothing public, debuggable builds allowed (Google re-signs it).
 
 Links expire after 60 days; for each update upload the new APK and open the new link.
 
+### Play Store app bundle (testing tracks)
+
+Play testing tracks (internal / closed) need an **Android App Bundle** signed with your upload key.
+CI builds `LyricDrive-car-N.aab` (artifact `lyricdrive-car-aab-N`, release build, car variant) when
+these repository secrets exist (*Settings → Secrets and variables → Actions*):
+
+| Secret | Value |
+|---|---|
+| `UPLOAD_KEYSTORE_BASE64` | the upload keystore (`.jks`), base64-encoded on one line |
+| `UPLOAD_KEYSTORE_PASSWORD` | keystore password |
+| `UPLOAD_KEY_PASSWORD` | key password (same as above for PKCS12) |
+| `UPLOAD_KEY_ALIAS` | `upload` |
+
+Every upload must be signed with the same upload key; keep the `.jks` and password safe. The
+version code is the CI run number, so each run can be uploaded as a new release.
+
+In Play Console: create the app → **Testing → Internal testing** → create a release → upload the
+`.aab` → add yourself as a tester → open the opt-in link on the phone and install from the Play
+Store. If Play Console asks, enable **Android Auto** under *Setup → Advanced settings → Form
+factors*.
+
 ## Testing on the Desktop Head Unit (DHU)
 
 1. **Install the DHU:** Android Studio → SDK Manager → SDK Tools → *Android Auto Desktop Head Unit

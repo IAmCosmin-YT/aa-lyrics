@@ -31,3 +31,32 @@ jobs:
         with:
           name: lyricdrive-media-apk-${{ github.run_number }}
           path: dist/LyricDrive-media-*.apk
+
+      # Play Store app bundle (release, signed with the upload key from repository secrets).
+      - name: Decode upload key
+        id: upload_key
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$UPLOAD_KEYSTORE_BASE64" ]; then
+            echo "::notice::No UPLOAD_KEYSTORE_BASE64 secret, skipping the Play Store app bundle."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build Play Store app bundle (car variant)
+        if: steps.upload_key.outputs.available == 'true'
+        env:
+          UPLOAD_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:bundleCarRelease --stacktrace
+          cp app/build/outputs/bundle/carRelease/*.aab dist/LyricDrive-car-${{ github.run_number }}.aab
+      - uses: actions/upload-artifact@v4
+        if: steps.upload_key.outputs.available == 'true'
+        with:
+          name: lyricdrive-car-aab-${{ github.run_number }}
+          path: dist/LyricDrive-car-*.aab
