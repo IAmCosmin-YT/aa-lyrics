@@ -106,12 +106,14 @@
     <string name="version_label">LyricDrive %1$s</string>
     <string name="aa_mode">What Android Auto shows</string>
     <string name="aa_mode_full">Full screen lyrics</string>
-    <string name="aa_mode_full_desc">The animated lyrics, same as the phone. Android Auto runs it as a navigation app, so it replaces Google Maps while open. Disconnect and reconnect the phone to the car after switching.</string>
     <string name="aa_mode_media">Media player</string>
-    <string name="aa_mode_media_desc">Android Auto\'s own player next to Maps, with the current line as the title (text only, no animations). Disconnect and reconnect the phone to the car after switching.</string>
     <string name="car_driving_note">Android Auto only lists one LyricDrive entry, so this switch picks which one it gets. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
     <string name="diagnostics_title">Android Auto diagnostics</string>
     <string name="diagnostics_desc">Shows how far Android Auto got the last time it tried to open LyricDrive. Tap LyricDrive in the car, then come back here, tap Refresh and Copy, and paste it.</string>
     <string name="diagnostics_copy">Copy</string>
     <string name="diagnostics_refresh">Refresh</string>
+    <string name="aa_mode_media_desc">Works with this sideloaded app. Android Auto\'s own player next to Maps; with the lyrics card on, the album art shows the current line with a word-by-word fill. Reconnect to the car after switching.</string>
+    <string name="aa_mode_full_desc">The animated phone-style lyrics (replaces Maps while open). Android Auto only shows this if the app was installed from Google Play, e.g. a private internal-testing track; with adb or APK installs it stays hidden. Reconnect to the car after switching.</string>
+    <string name="aa_art_card">Lyrics card as album art</string>
+    <string name="aa_art_card_desc">In the media player, replace the cover with a live card: blurred cover, the current line filling word by word, and the next line.</string>
 </resources>

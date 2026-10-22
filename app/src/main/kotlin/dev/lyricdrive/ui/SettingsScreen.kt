@@ -122,8 +122,8 @@ private val HIGHLIGHT_CHOICES = listOf(
 )
 
 private val AA_MODE_CHOICES = listOf(
-    Choice(AndroidAutoMode.FULL_SCREEN, R.string.aa_mode_full, R.string.aa_mode_full_desc),
     Choice(AndroidAutoMode.MEDIA_PLAYER, R.string.aa_mode_media, R.string.aa_mode_media_desc),
+    Choice(AndroidAutoMode.FULL_SCREEN, R.string.aa_mode_full, R.string.aa_mode_full_desc),
 )
 
 private val CAR_LAYOUT_CHOICES = listOf(
@@ -224,6 +224,12 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Text(stringResource(R.string.aa_mode), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
                     Segmented(AA_MODE_CHOICES, settings.androidAutoMode) { v -> update { it.copy(androidAutoMode = v) } }
+                    Spacer(Modifier.height(12.dp))
+                    SwitchRow(
+                        title = stringResource(R.string.aa_art_card),
+                        hint = stringResource(R.string.aa_art_card_desc),
+                        checked = settings.lyricsArtCard,
+                    ) { v -> update { it.copy(lyricsArtCard = v) } }
                     Spacer(Modifier.height(16.dp))
                     Text(stringResource(R.string.car_layout), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))

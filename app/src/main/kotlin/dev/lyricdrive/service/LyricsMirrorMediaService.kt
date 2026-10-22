@@ -1,6 +1,7 @@
 package dev.lyricdrive.service
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
@@ -12,12 +13,14 @@ import dev.lyricdrive.R
 import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.data.media.toCompatState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 
 /**
  * Android Auto allows one navigation app at a time, but the media card/rail sits *next to* it.
@@ -29,6 +32,9 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
     private val scope = MainScope()
     private lateinit var session: MediaSessionCompat
     private val nowPlaying by lazy { (application as LyricDriveApp).graph.nowPlaying }
+    private val settings by lazy { (application as LyricDriveApp).graph.settings }
+    private val card = LyricsArtCard()
+    private var cardJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -37,13 +43,25 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
         }
         sessionToken = session.sessionToken
 
+        // Re-publish on any change, then keep refreshing at word boundaries while playing so the
+        // lyrics card's fill advances (throttled; Android Auto re-reads artwork on each update).
         combine(
             nowPlaying.player,
             nowPlaying.lyrics,
             nowPlaying.artwork,
-            nowPlaying.activeLine.onStart { emit(-1) },
-        ) { player, lyrics, art, active -> MirrorState(player != null, lyrics, art, active) }
-            .onEach(::publishMetadata)
+            nowPlaying.displaySnapshot,
+            combine(settings.settings, nowPlaying.timeline, ::Pair),
+        ) { player, lyrics, art, snapshot, (prefs, _) -> MirrorState(player != null, lyrics, art, snapshot.isPlaying, prefs.lyricsArtCard) }
+            .onEach { state ->
+                cardJob?.cancel()
+                cardJob = scope.launch {
+                    while (true) {
+                        val nextUpdate = publishMetadata(state)
+                        if (!state.playing || nextUpdate == null) break
+                        delay(nextUpdate.coerceAtLeast(MIN_UPDATE_MS))
+                    }
+                }
+            }
             .launchIn(scope)
 
         nowPlaying.snapshot.onEach { snapshot ->
@@ -60,21 +78,38 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
         val hasPlayer: Boolean,
         val lyrics: LyricsState,
         val art: android.graphics.Bitmap?,
-        val activeLine: Int,
+        val playing: Boolean,
+        val lyricsCard: Boolean,
     )
 
-    private fun publishMetadata(state: MirrorState) {
+    /** Publishes metadata for "now"; returns ms until the next useful refresh, or null if none. */
+    private fun publishMetadata(state: MirrorState): Long? {
         session.isActive = state.hasPlayer
-        val track = nowPlaying.track.value ?: return
+        val track = nowPlaying.track.value ?: return null
+        val synced = ((state.lyrics as? LyricsState.Ready)?.lyrics as? Lyrics.Synced) != null
+        val timeline = nowPlaying.timeline.value
+        val position = nowPlaying.displayPositionAt(SystemClock.elapsedRealtime())
+        val active = if (synced) timeline.activeIndex(position) else -1
+        val activeLine = timeline.lines.getOrNull(active)
         val line = when (val l = state.lyrics) {
-            is LyricsState.Ready -> when (val lyrics = l.lyrics) {
+            is LyricsState.Ready -> when (l.lyrics) {
                 // Index into the timeline (it may contain inserted interlude rows).
-                is Lyrics.Synced -> nowPlaying.timeline.value.lines.getOrNull(state.activeLine)?.let { if (it.isInterlude) "♪" else it.text }
+                is Lyrics.Synced -> activeLine?.let { if (it.isInterlude) "♪" else it.text }
                 is Lyrics.Instrumental -> getString(R.string.instrumental)
                 is Lyrics.Unsynced -> null
             }
             else -> null
         }
+        val artwork = if (state.lyricsCard && synced) {
+            card.render(
+                artwork = state.art,
+                palette = nowPlaying.palette.value,
+                line = activeLine,
+                next = timeline.lines.getOrNull(active + 1),
+                filled = if (active >= 0) timeline.filledCharacters(active, position) else 0f,
+                progress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
+            )
+        } else state.art
         val title = line ?: track.title
         val subtitle = if (line != null) "${track.title} · ${track.artist}" else track.artist
         session.setMetadata(
@@ -85,9 +120,15 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, subtitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, track.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.durationMs ?: -1L)
-                .apply { state.art?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
+                .apply { artwork?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build(),
         )
+
+        if (!state.lyricsCard || !synced) return timeline.nextBoundaryAfter(position)?.let { it - position }
+        // Next word start in the active line, else the next line.
+        val nextWord = activeLine?.words?.firstOrNull { it.startMs > position }?.startMs
+        val next = nextWord ?: timeline.nextBoundaryAfter(position) ?: return null
+        return next - position
     }
 
     override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot =
@@ -122,6 +163,8 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
 
     private companion object {
         const val ROOT_ID = "root"
+        /** At most ~2.5 artwork updates per second. */
+        const val MIN_UPDATE_MS = 400L
         const val NOW_PLAYING_ID = "now_playing"
         const val SUPPORTED_ACTIONS = PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or
             PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
