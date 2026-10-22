@@ -57,6 +57,7 @@ object CarDiagnostics {
         return buildString {
             appendLine("LyricDrive ${BuildConfig.VERSION_NAME}, Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("Android Auto: $aa")
+            appendLine("Installed by: ${InstallSource.installer(context) ?: "adb / file (not Google Play)"}")
             appendLine("Full-screen car app: ${state(LyricsCarAppService::class.java)}")
             appendLine("Media player service: ${state(LyricsMirrorMediaService::class.java)}")
             Step.entries.forEach { appendLine("${it.label}: ${ago(prefs.getLong(it.name, 0))}") }

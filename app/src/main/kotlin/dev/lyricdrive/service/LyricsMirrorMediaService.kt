@@ -43,8 +43,7 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
         }
         sessionToken = session.sessionToken
 
-        // Re-publish on any change, then keep refreshing at word boundaries while playing so the
-        // lyrics card's fill advances (throttled; Android Auto re-reads artwork on each update).
+        // Re-publish on any change, then at each line boundary while playing.
         combine(
             nowPlaying.player,
             nowPlaying.lyrics,
@@ -106,7 +105,9 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
                 palette = nowPlaying.palette.value,
                 line = activeLine,
                 next = timeline.lines.getOrNull(active + 1),
-                filled = if (active >= 0) timeline.filledCharacters(active, position) else 0f,
+                // Whole line lit: Android Auto fetches and cross-fades each new artwork, which lags
+                // behind word-by-word updates, so the card changes once per line.
+                filled = activeLine?.text?.length?.toFloat() ?: 0f,
                 progress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
             )
         } else state.art
@@ -124,11 +125,7 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
                 .build(),
         )
 
-        if (!state.lyricsCard || !synced) return timeline.nextBoundaryAfter(position)?.let { it - position }
-        // Next word start in the active line, else the next line.
-        val nextWord = activeLine?.words?.firstOrNull { it.startMs > position }?.startMs
-        val next = nextWord ?: timeline.nextBoundaryAfter(position) ?: return null
-        return next - position
+        return timeline.nextBoundaryAfter(position)?.let { it - position }
     }
 
     override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot =

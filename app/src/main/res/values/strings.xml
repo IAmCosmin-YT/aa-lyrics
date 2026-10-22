@@ -113,7 +113,8 @@
     <string name="diagnostics_copy">Copy</string>
     <string name="diagnostics_refresh">Refresh</string>
     <string name="aa_mode_media_desc">Works with this sideloaded app. Android Auto\'s own player next to Maps; with the lyrics card on, the album art shows the current line with a word-by-word fill. Reconnect to the car after switching.</string>
-    <string name="aa_mode_full_desc">The animated phone-style lyrics (replaces Maps while open). Android Auto only shows this if the app was installed from Google Play, e.g. a private internal-testing track; with adb or APK installs it stays hidden. Reconnect to the car after switching.</string>
     <string name="aa_art_card">Lyrics card as album art</string>
-    <string name="aa_art_card_desc">In the media player, replace the cover with a live card: blurred cover, the current line filling word by word, and the next line.</string>
+    <string name="aa_art_card_desc">In the media player, show the current and next line in place of the cover. It changes once per line (Android Auto can\'t refresh artwork fast enough for word-by-word).</string>
+    <string name="aa_mode_full_desc">The animated phone-style lyrics, replacing Maps while open. Android Auto only shows this when the app is installed through Google Play (Internal App Sharing works, see the README). Reconnect to the car after switching.</string>
+    <string name="aa_full_needs_play">This copy wasn\'t installed through Google Play, so Android Auto will hide the full-screen app and you\'ll see nothing. Install it via Google Play Internal App Sharing (README → “Full screen in the car”), or switch back to Media player.</string>
 </resources>

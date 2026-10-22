@@ -137,6 +137,30 @@ their audio, so Spectrum and Disco follow the lyrics' word onsets, not the actua
 
 Requires JDK 17+ and the Android SDK (compileSdk 35). CI runs both on every push.
 
+## Full screen in the car (Google Play Internal App Sharing)
+
+Android Auto only lists Car App Library apps — the full-screen lyrics view is one — when they are
+installed from a trusted source such as Google Play; the *Unknown sources* developer option covers
+media, messaging and parked apps only ([Android for Cars: testing](https://developer.android.com/training/cars/testing)).
+Google's documented way to run an unreleased build in a real car is **Internal App Sharing** (or an
+internal test track): a private install link, no review, nothing public.
+
+1. Create a Google Play developer account (one-time US$25, identity verification) at
+   <https://play.google.com/console>.
+2. Open **Internal app sharing** (<https://play.google.com/console/internal-app-sharing>). Under
+   *Manage uploaders and testers*, add your own Google account as uploader and tester.
+3. Upload `app-debug.apk` from the CI artifact. Copy the link it gives you.
+4. On the phone: Play Store → profile icon → **Settings → About** → tap **Play Store version** 7
+   times → back in Settings, **General → Internal app sharing** → on.
+5. **Uninstall** the adb-installed LyricDrive (Play re-signs the app, so it can't update over it).
+6. Open the link on the phone (same Google account) → **Install**. Grant notification access again.
+7. LyricDrive → Settings → Android Auto → **What Android Auto shows → Full screen lyrics**.
+   Disconnect and reconnect the car, then open LyricDrive from the Android Auto app grid.
+
+For each update, upload the new APK and open the new link. The full-screen view replaces Google
+Maps while open: Android Auto only lets the navigation app draw its own screen, and the panel next
+to the map is reserved for its media player.
+
 ## Testing on the Desktop Head Unit (DHU)
 
 1. **Install the DHU:** Android Studio → SDK Manager → SDK Tools → *Android Auto Desktop Head Unit

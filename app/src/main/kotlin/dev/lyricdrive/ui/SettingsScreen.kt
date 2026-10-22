@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.lyricdrive.BuildConfig
 import dev.lyricdrive.LyricDriveApp
 import dev.lyricdrive.car.CarDiagnostics
+import dev.lyricdrive.car.InstallSource
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.data.audio.OutputRoute
@@ -143,6 +144,7 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val update = vm::updateSettings
+    val context = LocalContext.current
 
     Box(Modifier.fillMaxSize().background(Color(0xFF0B0814))) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -224,6 +226,16 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     Text(stringResource(R.string.aa_mode), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
                     Segmented(AA_MODE_CHOICES, settings.androidAutoMode) { v -> update { it.copy(androidAutoMode = v) } }
+                    val fromPlay = remember { InstallSource.isFromPlay(context) }
+                    if (settings.androidAutoMode == AndroidAutoMode.FULL_SCREEN && !fromPlay) {
+                        Text(
+                            stringResource(R.string.aa_full_needs_play),
+                            color = Color(0xFFFFB74D),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     SwitchRow(
                         title = stringResource(R.string.aa_art_card),

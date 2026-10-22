@@ -121,7 +121,7 @@ data class LyricSettings(
     val fullScreenWhenParked: Boolean = true,
     val carLayout: CarLayout = CarLayout.PHONE,
     val androidAutoMode: AndroidAutoMode = AndroidAutoMode.MEDIA_PLAYER,
-    /** Media player: show the live lyrics card as the album art. */
+    /** Media player: show the current line as a card in place of the album art. */
     val lyricsArtCard: Boolean = true,
     /** Shows lyrics this much later, to match audio that lags (Bluetooth, Android Auto). */
     val audioDelayMs: Int = 0,
