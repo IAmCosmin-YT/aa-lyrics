@@ -43,7 +43,8 @@ object TtmlConverter {
         val doc = try {
             DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = true
-                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                // Android's parser rejects unknown features (and never loads DTDs anyway).
+                runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
             }.newDocumentBuilder().parse(InputSource(StringReader(ttml)))
         } catch (e: Exception) {
             return null

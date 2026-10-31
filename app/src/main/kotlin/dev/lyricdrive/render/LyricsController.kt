@@ -10,9 +10,11 @@ import androidx.dynamicanimation.animation.FloatValueHolder
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import dev.lyricdrive.R
+import dev.lyricdrive.car.CarDiagnostics
 import dev.lyricdrive.core.model.LyricLine
 import dev.lyricdrive.core.model.Lyrics
 import dev.lyricdrive.core.model.LyricsState
+import dev.lyricdrive.core.sync.LyricsTimeline
 import dev.lyricdrive.data.sensors.AmbientLevel
 import dev.lyricdrive.data.settings.AnimationStyle
 import dev.lyricdrive.data.settings.CarLayout
@@ -89,6 +91,13 @@ class LyricsController(
         source.isPlaying || spring.isRunning || fling?.isRunning == true || expansionSpring.isRunning || !isFollowing
 
     fun draw(canvas: Canvas, width: Int, height: Int, lyricsArea: Rect, frameTimeNanos: Long) {
+        drawOrNull(canvas) { drawFrame(canvas, width, height, lyricsArea, frameTimeNanos) }?.let { e ->
+            reportRenderError("lyrics frame", e)
+            canvas.drawColor(android.graphics.Color.BLACK)
+        }
+    }
+
+    private fun drawFrame(canvas: Canvas, width: Int, height: Int, lyricsArea: Rect, frameTimeNanos: Long) {
         val prefs = settings()
         val style = prefs.animationStyle.spec()
         val theme = prefs.backgroundMode.theme()
@@ -128,12 +137,19 @@ class LyricsController(
             is LyricsState.Unavailable -> { message = track?.title; subMessage = context.getString(R.string.offline) }
             is LyricsState.Ready -> when (val lyrics = state.lyrics) {
                 is Lyrics.Instrumental -> { message = track?.title; subMessage = context.getString(R.string.instrumental) }
-                is Lyrics.Synced -> lines = source.timeline.lines.ifEmpty { lyrics.lines }
+                is Lyrics.Synced -> Unit
                 is Lyrics.Unsynced -> lines = unsyncedRows(lyrics)
             }
         }
-        val synced = (state as? LyricsState.Ready)?.lyrics is Lyrics.Synced
-        val timeline = source.timeline
+        val syncedLyrics = (state as? LyricsState.Ready)?.lyrics as? Lyrics.Synced
+        val synced = syncedLyrics != null
+        // Read the timeline once and take the lines from it, so indices always match the rows
+        // (the lyrics state and the session's timeline update separately).
+        val timeline = when {
+            syncedLyrics == null -> LyricsTimeline.EMPTY
+            else -> source.timeline.takeIf { it.lines.isNotEmpty() } ?: fallbackTimeline(syncedLyrics)
+        }
+        if (synced) lines = timeline.lines
         val position = source.positionMs(now)
         val active = if (synced) timeline.activeIndex(position) else -1
         val filled = if (active >= 0) timeline.filledCharacters(active, position) else 0f
@@ -175,7 +191,7 @@ class LyricsController(
         val highlight = resolveHighlight(prefs.highlightColor, theme, style, palette, albumPalette, beatIndex, prefs.backgroundMode)
         val highlight2 = resolveHighlight2(theme, palette, highlight, prefs.highlightColor)
 
-        background.draw(
+        drawOrNull(canvas) { background.draw(
             canvas,
             BackgroundPainter.Input(
                 mode = prefs.backgroundMode,
@@ -190,43 +206,103 @@ class LyricsController(
                 partyAllowed = !moving,
                 scrim = if (theme.light) 0f else scrimFor(theme, ambient),
             ),
-        )
+        ) }?.let { e ->
+            reportRenderError("background", e)
+            canvas.drawColor(android.graphics.Color.BLACK)
+        }
 
         val tapAge = SystemClock.uptimeMillis() - tapUptime
         val countdown = if (isFollowing) null else if (inPanMode) 1f else
             ((holdUntilUptime - SystemClock.uptimeMillis()).toFloat() / RESUME_DELAY_MS).coerceIn(0f, 1f)
-        painter.draw(
-            canvas,
-            LyricsPainter.Frame(
-                area = lyricsArea,
-                lines = lines,
-                synced = synced,
-                activeIndex = active,
-                activeSet = activeSet,
-                positionMs = position,
-                filledCharacters = filled,
-                lineProgress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
-                scrollY = scroll.value,
-                compact = moving && prefs.carLayout == CarLayout.COMPACT,
-                style = style,
-                theme = theme,
-                highlight = highlight,
-                highlight2 = highlight2,
-                textColor = theme.textColor,
-                textAlpha = if (theme.light) 1f else textAlphaFor(ambient),
-                expansion = expansion,
-                artwork = source.artwork,
-                title = track?.title,
-                artist = track?.artist,
-                header = if (drawHeader && message == null) track?.let { "${it.title} · ${it.artist}" } else null,
-                message = message,
-                subMessage = subMessage,
-                resumeCountdown = countdown,
-                tapRect = tapRect?.takeIf { tapAge < TAP_FEEDBACK_MS },
-                tapProgress = (tapAge.toFloat() / TAP_FEEDBACK_MS).coerceIn(0f, 1f),
-                textSize = lastTextSize,
-            ),
+        val frame = LyricsPainter.Frame(
+            area = lyricsArea,
+            lines = lines,
+            synced = synced,
+            activeIndex = active,
+            activeSet = activeSet,
+            positionMs = position,
+            filledCharacters = filled,
+            lineProgress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
+            scrollY = scroll.value,
+            compact = moving && prefs.carLayout == CarLayout.COMPACT,
+            style = style,
+            theme = theme,
+            highlight = highlight,
+            highlight2 = highlight2,
+            textColor = theme.textColor,
+            textAlpha = if (theme.light) 1f else textAlphaFor(ambient),
+            expansion = expansion,
+            artwork = source.artwork,
+            title = track?.title,
+            artist = track?.artist,
+            header = if (drawHeader && message == null) track?.let { "${it.title} · ${it.artist}" } else null,
+            message = message,
+            subMessage = subMessage,
+            resumeCountdown = countdown,
+            tapRect = tapRect?.takeIf { tapAge < TAP_FEEDBACK_MS },
+            tapProgress = (tapAge.toFloat() / TAP_FEEDBACK_MS).coerceIn(0f, 1f),
+            textSize = lastTextSize,
         )
+        drawSafely(canvas, frame)
+    }
+
+    private var fallbackSource: Lyrics.Synced? = null
+    private var fallbackLines = LyricsTimeline.EMPTY
+
+    /** Until the session's timeline catches up with freshly found lyrics. */
+    private fun fallbackTimeline(lyrics: Lyrics.Synced): LyricsTimeline {
+        if (lyrics !== fallbackSource) {
+            fallbackSource = lyrics
+            fallbackLines = LyricsTimeline(lyrics.lines)
+        }
+        return fallbackLines
+    }
+
+    private var lastDrawError: String? = null
+
+    /** Records a drawing error once (not every frame) for Settings → Diagnostics. */
+    private fun reportRenderError(where: String, error: Throwable) {
+        lastRenderError = error
+        val key = error.stackTraceToString().take(400)
+        if (key == lastDrawError) return
+        lastDrawError = key
+        val prefs = runCatching { settings() }.getOrNull()
+        runCatching { CarDiagnostics.recordError(context, "$where (${prefs?.animationStyle}, ${prefs?.backgroundMode})", error) }
+    }
+
+    /** Last error caught while drawing (tests assert there is none). */
+    internal var lastRenderError: Throwable? = null
+        private set
+
+    /**
+     * A drawing bug must never take the app (or the car screen) down: the error is recorded for
+     * Settings → Diagnostics and the lines are drawn plainly, without effects.
+     */
+    private fun drawSafely(canvas: Canvas, frame: LyricsPainter.Frame) {
+        val error = drawOrNull(canvas) { painter.draw(canvas, frame) } ?: return
+        reportRenderError("lyrics drawing", error)
+        // Plain fallback: no word timing (so no letter effects), list layout.
+        val plain = frame.copy(
+            lines = frame.lines.map { it.copy(words = emptyList(), backing = it.backing?.copy(words = emptyList())) },
+            style = SAFE_STYLE,
+        )
+        drawOrNull(canvas) { painter.draw(canvas, plain) } ?: return
+        drawOrNull(canvas) {
+            painter.draw(canvas, frame.copy(lines = emptyList(), message = frame.title ?: "LyricDrive", subMessage = context.getString(R.string.render_error)))
+        }
+    }
+
+    /** Runs [block] with the canvas state saved and restored; returns the error it threw, if any. */
+    private inline fun drawOrNull(canvas: Canvas, block: () -> Unit): RuntimeException? {
+        val count = canvas.save()
+        return try {
+            block()
+            null
+        } catch (e: RuntimeException) {
+            e
+        } finally {
+            canvas.restoreToCount(count)
+        }
     }
 
     /** Word onsets drive the disco pulse / spectrum activity; rate-limited to 3 Hz (photosensitivity). */
@@ -354,5 +430,6 @@ class LyricsController(
         const val RESUME_DELAY_MS = 4_000L
         const val TAP_FEEDBACK_MS = 350L
         const val MIN_PULSE_INTERVAL_MS = 333L
+        val SAFE_STYLE = LyricStyleSpec()
     }
 }

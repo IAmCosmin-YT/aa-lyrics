@@ -11,6 +11,7 @@
     <string name="searching">Finding lyrics…</string>
     <string name="instrumental">Instrumental</string>
     <string name="no_lyrics">No lyrics found</string>
+    <string name="render_error">Couldn\'t draw these lyrics. Settings → Diagnostics → Copy, and send it</string>
     <string name="offline">Lyrics unavailable offline — retrying when signal returns</string>
     <string name="unsynced_notice">Not time-synced</string>
     <string name="resume_auto_scroll">Resume auto-scroll</string>
@@ -106,8 +107,8 @@
     <string name="version_label">LyricDrive %1$s</string>
     <string name="aa_mode_media">Media player</string>
     <string name="car_driving_note">Android Auto only lists one LyricDrive entry, so this switch picks which one it gets. While moving, drag-to-browse is off and Disco flashes are toned down.</string>
-    <string name="diagnostics_title">Android Auto diagnostics</string>
-    <string name="diagnostics_desc">Shows how far Android Auto got the last time it tried to open LyricDrive. Tap LyricDrive in the car, then come back here, tap Refresh and Copy, and paste it.</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_desc">The last crash or drawing error, and how far Android Auto got the last time it opened LyricDrive. Tap Refresh, then Copy, and paste it.</string>
     <string name="diagnostics_copy">Copy</string>
     <string name="diagnostics_refresh">Refresh</string>
     <string name="aa_mode_media_desc">Works with this sideloaded app. Android Auto\'s own player next to Maps; with the lyrics card on, the album art shows the current line with a word-by-word fill. Reconnect to the car after switching.</string>

@@ -155,7 +155,10 @@ object LrcParser {
         if (groups.size == 1 && groups[0].value.trim() == trimmed) {
             val inner = groups[0].groupValues[1].trim()
             if (inner.isEmpty()) return line
-            return line.copy(text = inner, words = rebuild(line.words.map { it to true }) { true }, secondary = true)
+            val words = rebuild(line.words.map { it to true }) { true }
+            // Word texts must concatenate to the line text (renderers index letters by offset).
+            val text = if (words.isEmpty()) inner else words.joinToString("") { it.text }
+            return line.copy(text = text, words = words, secondary = true)
         }
 
         if (!line.hasWordTiming) {

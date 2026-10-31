@@ -16,6 +16,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Core unit tests
         run: ./gradlew :core:test --stacktrace
+      - name: App render tests (Robolectric)
+        id: render
+        continue-on-error: true
+        run: ./gradlew :app:testCarDebugUnitTest --stacktrace
+      - name: Render test report
+        if: steps.render.outcome == 'failure'
+        run: |
+          for f in app/build/test-results/testCarDebugUnitTest/*.xml; do
+            grep -q "<failure" "$f" && sed -n '/<failure/,/<\/failure>/p' "$f" | head -120
+          done || true
       - name: Assemble debug APKs (car + media variants)
         run: ./gradlew :app:assembleCarDebug :app:assembleMediaDebug --stacktrace
       - name: Name APKs
@@ -60,3 +70,9 @@ jobs:
         with:
           name: lyricdrive-car-aab-${{ github.run_number }}
           path: dist/LyricDrive-car-*.aab
+
+      - name: Fail when render tests failed
+        if: steps.render.outcome == 'failure'
+        run: |
+          echo "::error::App render tests failed, see the Render test report step"
+          exit 1

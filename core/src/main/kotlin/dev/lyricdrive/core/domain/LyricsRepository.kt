@@ -111,7 +111,30 @@ class LyricsRepository(
     }
 
     companion object {
-        fun toLyrics(raw: RawLyrics, track: TrackMetadata): Lyrics? {
+        /**
+         * Parses [raw]. A parser bug must not crash the app while looking up lyrics: on an
+         * exception the text is shown unsynced (tags stripped) instead.
+         */
+        fun toLyrics(raw: RawLyrics, track: TrackMetadata): Lyrics? =
+            try {
+                parse(raw, track)
+            } catch (e: RuntimeException) {
+                fallbackUnsynced(raw)
+            }
+
+        private val TAGS = Regex("""\[[^\]]*]|<[^>]*>|\{[^}]*}""")
+        private val VOICE = Regex("""^v\d+\s*:\s*""", RegexOption.IGNORE_CASE)
+
+        private fun fallbackUnsynced(raw: RawLyrics): Lyrics? {
+            val text = raw.plain?.takeIf { it.isNotBlank() && !LrcParser.looksLikeLrc(it) }
+                ?: (raw.synced ?: raw.plain)?.lineSequence()?.filterNot { it.trimStart().startsWith("[bg:") }
+                    ?.map { line -> VOICE.replace(TAGS.replace(line.trim(), "").trim(), "") }?.joinToString("\n")
+                ?: return null
+            val lines = PlainLyricsParser.parse(text)
+            return if (lines.isEmpty()) null else Lyrics.Unsynced(lines, raw.source)
+        }
+
+        private fun parse(raw: RawLyrics, track: TrackMetadata): Lyrics? {
             if (raw.instrumental) return Lyrics.Instrumental(raw.source)
             raw.synced?.takeIf { it.isNotBlank() }?.let { lrc ->
                 val lines = LrcParser.parse(lrc, track.durationMs ?: raw.durationMs)
