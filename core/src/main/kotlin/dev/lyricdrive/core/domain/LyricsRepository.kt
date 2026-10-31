@@ -50,17 +50,27 @@ class LyricsRepository(
     private val sources: List<LyricsSource>,
     private val nowMs: () -> Long = System::currentTimeMillis,
     private val negativeTtlMs: Long = 3L * 24 * 60 * 60 * 1000,
+    /** Cached line-synced lyrics are re-checked against word-synced sources after this long. */
+    private val lineSyncedRecheckMs: Long = 3L * 24 * 60 * 60 * 1000,
 ) {
     suspend fun lyricsFor(track: TrackMetadata): LyricsResult {
+        var lineSynced: Pair<RawLyrics, Lyrics>? = null
         val cached = runCatching { cache.get(track) }.getOrNull()
         if (cached != null) {
             val parsed = cached.lyrics?.let { toLyrics(it, track) }
-            if (parsed != null) return LyricsResult.Found(parsed)
-            if (cached.lyrics == null && nowMs() - cached.fetchedAtMs < negativeTtlMs) return LyricsResult.NotFound
+            if (parsed != null) {
+                // Word sources gain coverage over time: re-ask them now and then for songs we only
+                // have line timing for. The cached lyrics stay the fallback (and are re-stamped).
+                val lineOnly = parsed is Lyrics.Synced && !parsed.hasWordTiming
+                val due = nowMs() - cached.fetchedAtMs >= lineSyncedRecheckMs
+                if (!lineOnly || !due || sources.none { it.providesWordTiming }) return LyricsResult.Found(parsed)
+                lineSynced = cached.lyrics to parsed
+            } else if (cached.lyrics == null && nowMs() - cached.fetchedAtMs < negativeTtlMs) {
+                return LyricsResult.NotFound
+            }
         }
 
         var transientError: Throwable? = null
-        var lineSynced: Pair<RawLyrics, Lyrics>? = null
         for ((index, source) in sources.withIndex()) {
             if (lineSynced != null && !source.providesWordTiming) continue
             val result = try {

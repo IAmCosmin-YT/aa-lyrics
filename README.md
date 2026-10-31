@@ -65,8 +65,9 @@ app/    (Android)
 ```
 
 **Lyrics priority:** Room cache → word-synced sources: BetterLyrics (`lyrics-api.boidu.dev`, TTML,
-then its KuGou endpoint), Unison (`unison.boidu.dev`), LyricsPlus (configurable; defaults to
-binimum's server used by his am-lyrics component) → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
+then its KuGou endpoint), Apple Music via Paxsenix (`lyrics.paxsenix.org`; track ID from Apple's
+public iTunes Search API — the source Metrolist uses), Unison (`unison.boidu.dev`, by YouTube
+video ID when the player exposes it), LyricsPlus (configurable) → LRCLIB (`https://lrclib.net/api/get` with title, artist, album,
 duration; then `/api/search` ranked by similarity/duration/sync) → embedded tags (local files).
 Offline lookups show title + artist with an "offline" notice and retry automatically when the
 network comes back.
@@ -94,7 +95,9 @@ identical on Android Auto. The settings screen has a live preview at the top.
 - **Theme:** Cover blend (default — blurred cover art in slowly rotating discs that blend into
   each other), album colors (moving / still), blurred album art, Spectrum, Lofi vinyl (grain,
   vignette, spinning record), Disco (cycling neon, spotlights, pulses on sung words), Black (OLED).
-- **Animation:** Beautiful (default, inspired by the Beautiful Lyrics Spicetify extension:
+- **Animation:** Expressive (default, Metrolist-style: letters fill with a soft edge, words wobble
+  as they start, the filling letter nudges up, held notes glow, multi-syllable words grow,
+  ripple and spring back), Beautiful ( inspired by the Beautiful Lyrics Spicetify extension:
   each syllable swells, lifts and glows as a soft gradient sweeps across it, long held notes
   animate letter by letter, instrumental breaks show three filling dots that breathe and shrink
   away before the vocals return), Fluid (soft wipe, sung words float up, held notes swell and glow), Karaoke
@@ -154,24 +157,30 @@ The *Beside Maps* trick (weather category + full-bleed `NavigationTemplate` surf
 Auto only lists Car App Library apps installed from a trusted source; *Unknown sources* covers
 media, messaging and parked apps only ([Android for Cars: testing](https://developer.android.com/training/cars/testing)).
 
+### Installing the car variant without Google Play
+
+Android Auto lists Car App Library apps only when Android records **Installed by = Play Store**
+and **Requested by = a package installer** (not `com.android.shell`, which `adb install` gives).
+Both can be arranged on your own phone, the same way [KingInstaller](https://github.com/fcaronte/KingInstaller)
+does it:
+
+1. Uninstall LyricDrive if it was installed with `adb install`.
+2. Copy `LyricDrive-car-N.apk` to the phone and install it by tapping it in the Files app
+   ("Requested by" becomes the package installer). Later updates can use LyricDrive → Settings →
+   Android Auto → **Install APK as Play Store**.
+3. Check LyricDrive → Settings → Android Auto. If it still shows ✗, run once from a computer:
+   ```
+   adb shell cmd package set-installer dev.lyricdrive com.android.vending
+   ```
+   (older Android: `adb shell pm set-installer dev.lyricdrive com.android.vending`). Repeat after
+   each update. Xiaomi/HyperOS blocks this for adb; KingInstaller's root method is the fallback.
+4. Keep **Unknown sources** on in Android Auto's developer settings and reconnect the car.
+
 ### Installing the car variant with Google Play Internal App Sharing
 
-Internal App Sharing accepts the **APK** from CI as is — no app bundle, no signing setup, no
-review, nothing public, debuggable builds allowed (Google re-signs it).
-
-1. With your Google Play developer account, open **Internal app sharing**
-   (<https://play.google.com/console/internal-app-sharing>). Under *Manage uploaders and testers*,
-   add your own Google account as uploader and tester.
-2. Upload `LyricDrive-car-N.apk` (from the CI artifact `lyricdrive-car-apk-N`). Copy the link.
-3. On the phone: Play Store → profile icon → **Settings → About** → tap **Play Store version** 7
-   times → back in Settings, **General → Internal app sharing** → on.
-4. **Uninstall** the adb-installed LyricDrive (Play re-signs the app, so it can't update over it).
-5. Open the link on the phone (same Google account) → **Install**. Grant notification access again.
-6. LyricDrive → Settings → Android Auto → **Beside Maps** (default) or **Full screen**.
-   Disconnect and reconnect the car, then open LyricDrive from the Android Auto app grid. Keep
-   *Unknown sources* on in Android Auto's developer settings.
-
-Links expire after 60 days; for each update upload the new APK and open the new link.
+Alternatively, upload `LyricDrive-car-N.apk` at <https://play.google.com/console/internal-app-sharing>
+(add yourself as uploader/tester), enable *Internal app sharing* in the Play Store's settings
+(tap *Play Store version* 7 times under About), uninstall the old copy and install from the link.
 
 ### Play Store app bundle (testing tracks)
 

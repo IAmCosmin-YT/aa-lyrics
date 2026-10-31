@@ -393,7 +393,9 @@ class LyricsPainter(private val density: Float) {
             else -> WordEffect.NONE
         }
         if (frame.style.outline) drawOutline(canvas, paint, layout, alpha)
-        if (effect == WordEffect.SYLLABLE && line.hasWordTiming) {
+        if (effect == WordEffect.EXPRESSIVE && line.hasWordTiming) {
+            drawExpressive(canvas, paint, layout, line, frame, alpha)
+        } else if (effect == WordEffect.SYLLABLE && line.hasWordTiming) {
             drawSyllables(canvas, paint, layout, line, frame, alpha)
         } else if (effect != WordEffect.NONE && line.hasWordTiming) {
             drawWords(canvas, paint, layout, line, frame, alpha, effect)
@@ -555,6 +557,130 @@ class LyricsPainter(private val density: Float) {
      * - its glow flares quickly, holds, then fades by the end.
      * Long held syllables with short text animate letter by letter, staggered, lifting twice as far.
      */
+    /**
+     * Expressive (Metrolist-style), drawn letter by letter:
+     * - each letter fills left to right with a soft edge as its share of the syllable is sung;
+     * - a syllable "wobbles" (quick swell, slow settle) when it starts;
+     * - the letter being filled gets a small upward nudge;
+     * - drawn-out syllables glow while held, more for longer notes;
+     * - multi-syllable words grow a little with each syllable, spring at the last one, ripple in a
+     *   gentle wave while sung, and spring back when done;
+     * - scaled letters push their neighbours so nothing overlaps.
+     */
+    private fun drawExpressive(canvas: Canvas, paint: TextPaint, layout: StaticLayout, line: LyricLine, frame: Frame, alpha: Float) {
+        val p = frame.positionMs
+        val text = layout.text
+        val pi = Math.PI.toFloat()
+
+        // Map each character to its syllable, and syllables to word groups.
+        data class Syl(val start: Int, val end: Int, val startMs: Long, val endMs: Long, var group: Int = 0, var pos: Int = 0)
+        val syls = ArrayList<Syl>(line.words.size)
+        var offset = 0
+        for (w in line.words) {
+            val s = offset
+            val e = (offset + w.text.trimEnd().length).coerceAtMost(text.length)
+            offset += w.text.length
+            if (e > s) syls += Syl(s, e, w.startMs, w.endMs)
+        }
+        // Group = syllables of one word (no whitespace between them).
+        var group = 0
+        var pos = 0
+        val groupSize = HashMap<Int, Int>()
+        for ((i, s) in syls.withIndex()) {
+            s.group = group
+            s.pos = pos
+            groupSize[group] = pos + 1
+            val endsWord = i == syls.lastIndex || s.end >= text.length || text[s.end].isWhitespace() || syls[i + 1].start > s.end
+            if (endsWord) { group++; pos = 0 } else pos++
+        }
+        val groupStart = HashMap<Int, Long>()
+        val groupEnd = HashMap<Int, Long>()
+        for (s in syls) {
+            groupStart[s.group] = minOf(groupStart[s.group] ?: Long.MAX_VALUE, s.startMs)
+            groupEnd[s.group] = maxOf(groupEnd[s.group] ?: Long.MIN_VALUE, s.endMs)
+        }
+
+        // Per-letter transforms, then per-line pushes (extra width from horizontal scaling).
+        class Glyph(val start: Int, val end: Int, val line: Int, val x0: Float, val x1: Float, val sx: Float, val sy: Float, val dy: Float, val fill: Float, val glow: Float, val sung: Boolean)
+        val glyphs = ArrayList<Glyph>(text.length)
+        for (s in syls) {
+            val dur = (s.endMs - s.startMs).coerceAtLeast(100)
+            val sylProgress = ((p - s.startMs).toFloat() / dur)
+            val sung = p > s.endMs
+            val since = (p - s.startMs).toFloat()
+            val wobble = when {
+                since < 0f || since > 750f -> 0f
+                since < 125f -> since / 125f
+                else -> 1f - (since - 125f) / 625f
+            }
+            // Syllable crescendo inside multi-syllable words.
+            val size = groupSize[s.group] ?: 1
+            var crescendo = 0f
+            if (size > 1) {
+                val gEnd = groupEnd[s.group] ?: s.endMs
+                val pOut = ((p - gEnd) / 600f).coerceIn(0f, 1f)
+                val sp = sylProgress.coerceIn(0f, 1f)
+                val isLast = s.pos == size - 1
+                crescendo = when {
+                    pOut > 0f -> (s.pos * 0.012f + 0.06f) * kotlin.math.exp(-3.5f * pOut) * kotlin.math.cos(5f * pOut * pi) * (1f - pOut)
+                    p < (groupStart[s.group] ?: 0L) -> 0f
+                    isLast && sp > 0f -> s.pos * 0.012f + 0.06f * (1f - kotlin.math.exp(-3.5f * sp) * kotlin.math.cos(5f * sp * pi) * (1f - sp))
+                    sp > 0f || p >= (groupStart[s.group] ?: 0L) -> s.pos * 0.012f + (if (sp > 0f) 0.02f * (1f - sp) else 0f)
+                    else -> 0f
+                }
+            }
+            // Wave while the word group is being sung, faded in/out at its edges.
+            val gStart = groupStart[s.group] ?: s.startMs
+            val gEnd = groupEnd[s.group] ?: s.endMs
+            val waveFade = if (size > 1) ((p - gStart) / 200f).coerceIn(0f, 1f) * ((gEnd - p) / 200f).coerceIn(0f, 1f) else 0f
+            // Glow for drawn-out syllables: long and slow (many ms per letter).
+            val msPerLetter = dur.toFloat() / (s.end - s.start).coerceAtLeast(1)
+            val impact = (((msPerLetter - 100f) / 250f).coerceIn(0f, 1f) * 0.6f + ((dur - 300f) / 1500f).coerceIn(0f, 1f) * 0.4f)
+            val held = (sylProgress * 5f).coerceIn(0f, 1f) * ((1f - sylProgress) * 8f).coerceIn(0f, 1f)
+            val glow = if (!sung && sylProgress > 0f) impact * held else 0f
+
+            val n = s.end - s.start
+            for (k in 0 until n) {
+                val c0 = s.start + k
+                val li = layout.getLineForOffset(c0)
+                val x0 = layout.getPrimaryHorizontal(c0)
+                val x1 = if (c0 + 1 < layout.getLineEnd(li)) layout.getPrimaryHorizontal(c0 + 1) else layout.getLineRight(li)
+                val cp = ((sylProgress - k.toFloat() / n) * n).coerceIn(0f, 1f)
+                val nudge = if (!sung && sylProgress > 0f) 0.038f * kotlin.math.sin(cp * pi) * kotlin.math.exp(-3f * cp) else 0f
+                val sx = 1f + wobble * 0.025f + crescendo + nudge * 0.3f
+                val sy = 1f + wobble * 0.015f + crescendo + nudge
+                val wave = if (waveFade > 0.01f) kotlin.math.sin(frame.positionMs * 0.006f + c0 * 0.4f) * 3.2f * density * waveFade else 0f
+                glyphs += Glyph(c0, c0 + 1, li, x0, x1, sx, sy, wave, if (sung) 1f else cp, glow, sung)
+            }
+        }
+
+        val totalPush = FloatArray(layout.lineCount)
+        for (g in glyphs) totalPush[g.line] += (g.x1 - g.x0) * (g.sx - 1f)
+        val centered = layout.getParagraphAlignment(0) == Layout.Alignment.ALIGN_CENTER
+        val push = FloatArray(layout.lineCount) { if (centered) -totalPush[it] / 2f else 0f }
+
+        val dim = frame.style.activeDimAlpha
+        for (g in glyphs) {
+            val baseline = layout.getLineBaseline(g.line).toFloat()
+            val w = (g.x1 - g.x0).coerceAtLeast(1f)
+            canvas.save()
+            canvas.translate(push[g.line], g.dy)
+            canvas.scale(g.sx, g.sy, (g.x0 + g.x1) / 2f, baseline)
+            if (g.fill < 1f && dim > 0f) {
+                paint.color = Color.WHITE
+                paint.alpha = (255 * dim * alpha).toInt()
+                canvas.drawText(text, g.start, g.end, g.x0, baseline, paint)
+            }
+            if (g.fill > 0f) {
+                val front = if (g.fill >= 1f) Float.NaN else g.x0 + w * g.fill
+                drawLitRun(canvas, paint, text, g.start, g.end, g.x0, baseline, front, frame, alpha, glowBoost = g.glow * 0.6f, featherPx = w * 0.45f)
+            }
+            canvas.restore()
+            push[g.line] += w * (g.sx - 1f)
+        }
+        paint.color = Color.WHITE
+    }
+
     private fun drawSyllables(canvas: Canvas, paint: TextPaint, layout: StaticLayout, line: LyricLine, frame: Frame, alpha: Float) {
         val p = frame.positionMs
         val text = layout.text

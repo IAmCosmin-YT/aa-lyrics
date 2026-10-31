@@ -57,7 +57,9 @@ object CarDiagnostics {
         return buildString {
             appendLine("LyricDrive ${BuildConfig.VERSION_NAME}, Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
             appendLine("Android Auto: $aa")
-            appendLine("Installed by: ${InstallSource.installer(context) ?: "adb / file (not Google Play)"}")
+            val source = InstallSource.info(context)
+            appendLine("Installed by: ${source.installedBy ?: "-"} | Requested by: ${source.requestedBy ?: "-"}")
+            appendLine("Android Auto can list the car variant: ${if (source.androidAutoReady) "yes" else "no"}")
             appendLine("Variant: ${BuildConfig.FLAVOR}")
             appendLine("Beside-Maps car app (weather): ${state(LyricsWeatherCarAppService::class.java)}")
             appendLine("Full-screen car app (navigation): ${state(LyricsCarAppService::class.java)}")

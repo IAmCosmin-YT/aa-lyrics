@@ -14,6 +14,7 @@ import dev.lyricdrive.data.net.ConnectivityObserver
 import dev.lyricdrive.data.remote.BetterLyricsSource
 import dev.lyricdrive.data.remote.LrclibClient
 import dev.lyricdrive.data.remote.LyricsPlusSource
+import dev.lyricdrive.data.remote.PaxsenixSource
 import dev.lyricdrive.data.remote.UnisonSource
 import dev.lyricdrive.data.remote.LrclibLyricsSource
 import dev.lyricdrive.data.sensors.AmbientLightMonitor
@@ -58,10 +59,12 @@ class AppGraph(app: Application) {
 
     private val repository = LyricsRepository(
         cache = RoomLyricsCache(database.lyricsDao()),
-        // Priority: cache (inside the repository) → word-synced sources (BetterLyrics, Unison, optional
-        // LyricsPlus) → LRCLIB → embedded tags. A line-synced hit keeps looking for word timing.
+        // Priority: cache (inside the repository) → word-synced sources (BetterLyrics, Apple Music via
+        // Paxsenix, Unison, LyricsPlus) → LRCLIB → embedded tags. A line-synced hit keeps looking
+        // for word timing; cached line-only songs are re-checked every few days.
         sources = listOf(
             BetterLyricsSource(userAgent),
+            PaxsenixSource(userAgent),
             UnisonSource(userAgent),
             LyricsPlusSource(userAgent) { settings.settings.value.lyricsPlusServer },
             LrclibLyricsSource(LrclibClient(userAgent)),

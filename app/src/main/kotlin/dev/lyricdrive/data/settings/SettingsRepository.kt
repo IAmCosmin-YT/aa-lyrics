@@ -11,6 +11,9 @@ enum class AnimationStyle {
     /** Beautiful-Lyrics-style: syllables swell, lift and glow as they're sung; held notes go letter by letter. */
     BEAUTIFUL,
 
+    /** Metrolist-style per-letter animation: soft letter fill, wobble, nudge, glow, syllable crescendo. */
+    EXPRESSIVE,
+
     /** Apple-Music-like: soft gradient wipe, sung words lift and held notes glow; blurred neighbours. */
     FLUID,
 
@@ -124,7 +127,7 @@ const val DEFAULT_LYRICS_PLUS_SERVER = "https://lyricsplus.binimum.org"
 
 data class LyricSettings(
     val wordHighlight: WordHighlight = WordHighlight.AUTO,
-    val animationStyle: AnimationStyle = AnimationStyle.BEAUTIFUL,
+    val animationStyle: AnimationStyle = AnimationStyle.EXPRESSIVE,
     val backgroundMode: BackgroundMode = BackgroundMode.COVER_BLEND,
     val nightMode: NightMode = NightMode.AUTO,
     val highlightColor: HighlightColor = HighlightColor.AUTO,
@@ -173,7 +176,7 @@ class SettingsRepository(context: Context) {
         val legacyWord = if (prefs.contains(KEY_LEGACY_WORD_SYNC) && !prefs.getBoolean(KEY_LEGACY_WORD_SYNC, true)) WordHighlight.OFF else null
         return LyricSettings(
             wordHighlight = enumOr(KEY_WORD_HIGHLIGHT, legacyWord ?: WordHighlight.AUTO),
-            animationStyle = enumOr(KEY_ANIMATION, AnimationStyle.BEAUTIFUL),
+            animationStyle = enumOr(KEY_ANIMATION, AnimationStyle.EXPRESSIVE),
             backgroundMode = enumOr(KEY_BACKGROUND, BackgroundMode.COVER_BLEND),
             nightMode = enumOr(KEY_NIGHT, NightMode.AUTO),
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
@@ -209,7 +212,8 @@ class SettingsRepository(context: Context) {
     private companion object {
         const val KEY_LEGACY_WORD_SYNC = "word_sync"
         const val KEY_WORD_HIGHLIGHT = "word_highlight"
-        const val KEY_ANIMATION = "animation_style"
+        // v2: Expressive became the default.
+        const val KEY_ANIMATION = "animation_style_v2"
         const val KEY_BACKGROUND = "background_mode"
         const val KEY_NIGHT = "night_mode"
         const val KEY_HIGHLIGHT = "highlight_color"

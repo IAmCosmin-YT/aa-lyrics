@@ -4,20 +4,37 @@ import android.content.Context
 import android.os.Build
 
 /**
- * Android Auto only lists Car App Library apps (the full-screen view) when they were installed by
- * Google Play — Play Store, Internal App Sharing or a testing track. Unknown sources doesn't cover them.
+ * How the system recorded this app's installation. Android Auto only lists Car App Library apps
+ * (the car variant) when **Installed by** is the Play Store and **Requested by** is a package
+ * installer or the Play Store — never the adb shell.
  */
 object InstallSource {
-    private const val PLAY_STORE = "com.android.vending"
+    const val PLAY_STORE = "com.android.vending"
+    private const val SHELL = "com.android.shell"
 
-    fun installer(context: Context): String? = runCatching {
+    data class Info(val installedBy: String?, val requestedBy: String?) {
+        val installedByPlay get() = installedBy == PLAY_STORE
+        val requestedByShell get() = requestedBy == SHELL
+        val requestedByInstaller get() = requestedBy == PLAY_STORE || requestedBy?.contains("packageinstaller") == true
+
+        /** What Android Auto needs to list the car variant. */
+        val androidAutoReady get() = installedByPlay && !requestedByShell && (requestedByInstaller || requestedBy == null)
+    }
+
+    fun info(context: Context): Info = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+            val i = context.packageManager.getInstallSourceInfo(context.packageName)
+            Info(i.installingPackageName, i.initiatingPackageName)
         } else {
             @Suppress("DEPRECATION")
-            context.packageManager.getInstallerPackageName(context.packageName)
+            Info(context.packageManager.getInstallerPackageName(context.packageName), null)
         }
-    }.getOrNull()
+    }.getOrDefault(Info(null, null))
 
-    fun isFromPlay(context: Context): Boolean = installer(context) == PLAY_STORE
+    fun installer(context: Context): String? = info(context).installedBy
+
+    fun isFromPlay(context: Context): Boolean = info(context).installedByPlay
+
+    /** adb command that marks the app as installed by the Play Store (shell may do this on most phones). */
+    fun adbCommand(context: Context) = "adb shell cmd package set-installer ${context.packageName} $PLAY_STORE"
 }

@@ -115,9 +115,16 @@
     <string name="aa_art_card_desc">In the media player, show the current and next line in place of the cover. It changes once per line (Android Auto can\'t refresh artwork fast enough for word-by-word).</string>
     <string name="aa_mode">Where the lyrics appear</string>
     <string name="aa_mode_beside">Beside Maps</string>
-    <string name="aa_mode_beside_desc">Animated lyrics in their own half of the screen, next to Google Maps (split view on wide screens). LyricDrive registers as a weather app so Maps keeps navigating. Reconnect to the car after switching.</string>
     <string name="aa_mode_full">Full screen</string>
-    <string name="aa_mode_full_desc">Animated lyrics on the whole screen. LyricDrive registers as a navigation app, so it replaces Google Maps while open. Reconnect to the car after switching.</string>
     <string name="aa_mode_media_only">This is the media variant: lyrics show in Android Auto\'s own player next to Maps. For animated lyrics in the car, install the car variant through Google Play Internal App Sharing (see the README).</string>
-    <string name="aa_full_needs_play">This copy wasn\'t installed through Google Play, so Android Auto will hide LyricDrive. Upload the car APK to Google Play Internal App Sharing and install it from the link (README → “Lyrics in the car”).</string>
+    <string name="anim_expressive">Expressive</string>
+    <string name="anim_expressive_desc">Metrolist-style: letters fill softly, words wobble, held notes glow, long words ripple</string>
+    <string name="aa_mode_beside_desc">Animated lyrics, exactly like the phone, in their own panel next to Google Maps (split view). LyricDrive registers as a weather app so Maps keeps navigating. Reconnect to the car after switching.</string>
+    <string name="aa_mode_full_desc">Animated lyrics on the whole screen. LyricDrive registers as a navigation app, so it replaces Google Maps while open. Reconnect to the car after switching.</string>
+    <string name="aa_setup_ready">✓ Android Auto will list LyricDrive</string>
+    <string name="aa_setup_not_ready">✗ Android Auto will hide LyricDrive</string>
+    <string name="aa_setup_status">Installed by: %1$s\nRequested by: %2$s</string>
+    <string name="aa_setup_steps">Android Auto only shows apps it thinks came from the Play Store. No Play upload needed:\n1. Uninstall LyricDrive if it was installed with adb, then install the car APK by opening it in your Files app (or use “Install APK as Play Store” below).\n2. If this still says ✗, connect the phone to a computer and run the command below once.\n3. Reconnect to the car.</string>
+    <string name="aa_setup_copy">Copy command</string>
+    <string name="aa_setup_install">Install APK as Play Store</string>
 </resources>

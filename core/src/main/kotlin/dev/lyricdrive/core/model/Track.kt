@@ -10,7 +10,17 @@ data class TrackMetadata(
     val sourcePackage: String? = null,
     /** `METADATA_KEY_MEDIA_URI`, when the player exposes one (mostly local players). */
     val mediaUri: String? = null,
-)
+    /** `METADATA_KEY_MEDIA_ID`; for YouTube Music / Metrolist this is the YouTube video ID. */
+    val mediaId: String? = null,
+) {
+    /** The YouTube video ID, when the player exposes one as its media ID. */
+    val youTubeVideoId: String?
+        get() = mediaId?.substringAfterLast('/')?.takeIf { YOUTUBE_ID.matches(it) }
+
+    private companion object {
+        val YOUTUBE_ID = Regex("[A-Za-z0-9_-]{11}")
+    }
+}
 
 enum class PlaybackStatus { PLAYING, PAUSED, BUFFERING, STOPPED, NONE }
 

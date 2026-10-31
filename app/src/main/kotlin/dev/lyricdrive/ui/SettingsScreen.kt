@@ -1,6 +1,8 @@
 package dev.lyricdrive.ui
 
 import androidx.annotation.StringRes
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,10 +59,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.lyricdrive.BuildConfig
 import dev.lyricdrive.LyricDriveApp
 import dev.lyricdrive.car.CarDiagnostics
+import dev.lyricdrive.car.ApkInstaller
 import dev.lyricdrive.car.InstallSource
 import dev.lyricdrive.R
 import dev.lyricdrive.core.sync.WordHighlight
@@ -93,6 +98,7 @@ private val WORD_CHOICES = listOf(
 )
 
 private val ANIMATION_CHOICES = listOf(
+    Choice(AnimationStyle.EXPRESSIVE, R.string.anim_expressive, R.string.anim_expressive_desc),
     Choice(AnimationStyle.BEAUTIFUL, R.string.anim_beautiful, R.string.anim_beautiful_desc),
     Choice(AnimationStyle.FLUID, R.string.anim_fluid, R.string.anim_fluid_desc),
     Choice(AnimationStyle.KARAOKE, R.string.anim_karaoke, R.string.anim_karaoke_desc),
@@ -233,15 +239,9 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     } else {
                         Text(stringResource(R.string.aa_mode_media_only), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
                     }
-                    val fromPlay = remember { InstallSource.isFromPlay(context) }
-                    if (isCarVariant && !fromPlay) {
-                        Text(
-                            stringResource(R.string.aa_full_needs_play),
-                            color = Color(0xFFFFB74D),
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
+                    if (isCarVariant) {
+                        Spacer(Modifier.height(12.dp))
+                        AndroidAutoSetupCard()
                     }
                     Spacer(Modifier.height(12.dp))
                     if (!isCarVariant) SwitchRow(
@@ -508,5 +508,62 @@ private fun CarDiagnosticsCard() {
         }) { Text(stringResource(R.string.diagnostics_copy), color = Color.White) }
         TextButton(onClick = { report = CarDiagnostics.report(context) }) { Text(stringResource(R.string.diagnostics_refresh), color = Color.White) }
         TextButton(onClick = { CarDiagnostics.clear(context); report = CarDiagnostics.report(context) }) { Text(stringResource(R.string.reset), color = Color.White) }
+    }
+}
+
+/**
+ * Android Auto only lists the car variant when the system records the Play Store as its installer
+ * and the install wasn't requested by adb. Shows that status, installs an APK "as Play Store", and
+ * offers the adb command that sets the installer where the phone ignores the request.
+ */
+@Composable
+private fun AndroidAutoSetupCard() {
+    val context = LocalContext.current
+    var info by remember { mutableStateOf(InstallSource.info(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { info = InstallSource.info(context) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runCatching { ApkInstaller.install(context, uri) }
+    }
+    val ok = info.androidAutoReady
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background((if (ok) Color(0xFF1B5E20) else Color(0xFF5D4037)).copy(alpha = 0.35f))
+            .padding(12.dp),
+    ) {
+        Text(
+            stringResource(if (ok) R.string.aa_setup_ready else R.string.aa_setup_not_ready),
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            stringResource(R.string.aa_setup_status, info.installedBy ?: "-", info.requestedBy ?: "-"),
+            color = Muted,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (!ok) {
+            Text(stringResource(R.string.aa_setup_steps), color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp))
+            val command = InstallSource.adbCommand(context)
+            Text(
+                command,
+                color = Color.White,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.4f)).padding(8.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = {
+                    context.getSystemService(android.content.ClipboardManager::class.java)
+                        .setPrimaryClip(android.content.ClipData.newPlainText("adb", command))
+                }) { Text(stringResource(R.string.aa_setup_copy), color = Color.White) }
+                TextButton(onClick = { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream")) }) {
+                    Text(stringResource(R.string.aa_setup_install), color = Color.White)
+                }
+            }
+        }
     }
 }

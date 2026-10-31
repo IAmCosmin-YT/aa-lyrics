@@ -23,6 +23,7 @@ fun MediaMetadataCompat.toTrack(packageName: String): TrackMetadata? {
         durationMs = getLong(MediaMetadataCompat.METADATA_KEY_DURATION).takeIf { it > 0 },
         sourcePackage = packageName,
         mediaUri = getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI),
+        mediaId = getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID),
     )
 }
 
