@@ -67,7 +67,10 @@ class BackgroundPainter(private val density: Float) {
         // Soft layer (blurred).
         softLayer(canvas, input) { c ->
             when (input.mode) {
-                BackgroundMode.BLACK -> Unit
+                BackgroundMode.BLACK, BackgroundMode.OLED_MINIMAL, BackgroundMode.HIGH_CONTRAST, BackgroundMode.PAPER -> Unit
+                BackgroundMode.PRISM -> prism(c, w, h, input)
+                BackgroundMode.PULSE -> pulse(c, w, h, input)
+                BackgroundMode.NEON -> neonBands(c, w, h, input)
                 BackgroundMode.ALBUM_GRADIENT -> gradient(c, w, h, input.palette)
                 BackgroundMode.ALBUM_ART -> if (!artwork(c, w, h, input)) blobs(c, w, h, input.time, input.palette.blobColors(), 220)
                 BackgroundMode.COVER_BLEND -> if (!coverBlend(c, w, h, input)) blobs(c, w, h, input.time, input.palette.blobColors(), 220)
@@ -85,6 +88,7 @@ class BackgroundPainter(private val density: Float) {
         when (input.mode) {
             BackgroundMode.LOFI -> lofi(canvas, w, h, input)
             BackgroundMode.DISCO -> discoOverlay(canvas, w, h, input)
+            BackgroundMode.PAPER -> paper(canvas, w, h, input)
             else -> Unit
         }
 
@@ -120,7 +124,7 @@ class BackgroundPainter(private val density: Float) {
     private var blobShaders: Array<Shader>? = null
     private var blobShaderKey: List<Int>? = null
 
-    private fun blobs(c: Canvas, w: Float, h: Float, t: Float, colors: IntArray, alpha: Int) {
+    private fun blobs(c: Canvas, w: Float, h: Float, t: Float, colors: IntArray, alpha: Int, radiusScale: Float = 1f) {
         val key = colors.toList() + alpha
         if (key != blobShaderKey) {
             blobShaderKey = key
@@ -132,7 +136,7 @@ class BackgroundPainter(private val density: Float) {
         for (i in shaders.indices) {
             val cx = w * (0.5f + 0.38f * sin(t * SPEED_X[i] + PHASE[i]))
             val cy = h * (0.5f + 0.38f * cos(t * SPEED_Y[i] + PHASE[i] * 1.7f))
-            val r = max(w, h) * (0.55f + 0.08f * sin(t * 0.7f + i))
+            val r = max(w, h) * (0.55f + 0.08f * sin(t * 0.7f + i)) * radiusScale
             matrix.setScale(r, r)
             matrix.postTranslate(cx, cy)
             shaders[i].setLocalMatrix(matrix)
@@ -206,8 +210,70 @@ class BackgroundPainter(private val density: Float) {
         return true
     }
 
+    /** Vivid blobs whose hues slowly travel around the color wheel. */
+    private fun prism(c: Canvas, w: Float, h: Float, input: Input) {
+        val hsv = FloatArray(3)
+        val colors = IntArray(4) { i ->
+            hsv[0] = (input.time * 14f + i * 90f) % 360f
+            hsv[1] = 0.85f
+            hsv[2] = 0.95f
+            Color.HSVToColor(hsv)
+        }
+        blobs(c, w, h, input.time, colors, 215)
+    }
+
+    /** Album colors pushed to full saturation, swelling and brightening with the vocals. */
+    private fun pulse(c: Canvas, w: Float, h: Float, input: Input) {
+        val hsl = FloatArray(3)
+        fun vivid(color: Int): Int {
+            ColorUtils.colorToHSL(color, hsl)
+            hsl[1] = hsl[1].coerceAtLeast(0.75f)
+            hsl[2] = hsl[2].coerceIn(0.45f, 0.62f)
+            return ColorUtils.HSLToColor(hsl)
+        }
+        val p = input.palette
+        val energy = (0.6f * input.activity + 0.4f * input.pulse).coerceIn(0f, 1f)
+        blobs(
+            c, w, h, input.time * (1f + 0.5f * energy),
+            intArrayOf(vivid(p.primary), vivid(p.accent), vivid(p.secondary), vivid(p.accent)),
+            (165 + 90 * energy).toInt().coerceAtMost(255),
+            radiusScale = 1f + 0.14f * energy,
+        )
+    }
+
+    private var neonShader: LinearGradient? = null
+    private var neonKey = 0L
+
+    /** Diagonal neon light bands sweeping slowly across a dark background (blurred into glow). */
+    private fun neonBands(c: Canvas, w: Float, h: Float, input: Input) {
+        val key = (input.width.toLong() shl 32) or input.height.toLong()
+        val p = input.palette
+        val shader = neonShader?.takeIf { neonKey == key } ?: LinearGradient(
+            0f, 0f, w * 0.6f, h * 0.6f,
+            intArrayOf(0x00000000, p.primary, 0x00000000, p.secondary, 0x00000000, p.accent, 0x00000000),
+            floatArrayOf(0f, 0.12f, 0.3f, 0.45f, 0.62f, 0.78f, 1f),
+            Shader.TileMode.MIRROR,
+        ).also { neonShader = it; neonKey = key }
+        val travel = (input.time * 0.12f) % 2f
+        matrix.setTranslate(w * 0.6f * travel, h * 0.6f * travel)
+        shader.setLocalMatrix(matrix)
+        paint.shader = shader
+        paint.alpha = (200 + 55 * input.pulse).toInt().coerceAtMost(255)
+        c.drawRect(0f, 0f, w, h, paint)
+        paint.shader = null
+        paint.alpha = 255
+    }
+
+    /** Warm light paper with a soft diagonal tone shift. */
+    private fun paper(c: Canvas, w: Float, h: Float, input: Input) {
+        val p = input.palette
+        paint.shader = LinearGradient(0f, 0f, w, h, intArrayOf(p.deep, p.primary, p.deep), null, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, paint)
+        paint.shader = null
+    }
+
     private fun discoBlobs(c: Canvas, w: Float, h: Float, input: Input) {
-        val neon = PresetPalettes.NEON
+        val neon = PresetPalettes.NEON_CYCLE
         val a = neon[input.beatIndex.mod(neon.size)]
         val b = neon[(input.beatIndex + 1).mod(neon.size)]
         val boost = if (input.partyAllowed) 1f + 0.6f * input.pulse else 1f
@@ -287,7 +353,7 @@ class BackgroundPainter(private val density: Float) {
     }
 
     private fun discoOverlay(c: Canvas, w: Float, h: Float, input: Input) {
-        val neon = PresetPalettes.NEON
+        val neon = PresetPalettes.NEON_CYCLE
         // Sweeping spotlights from the ceiling.
         for (i in 0 until 3) {
             val angle = sin(input.time * (0.5f + i * 0.17f) + i * 2.1f) * 0.45f

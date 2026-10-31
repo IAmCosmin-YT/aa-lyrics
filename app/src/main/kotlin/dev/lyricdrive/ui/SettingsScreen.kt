@@ -117,7 +117,13 @@ private val THEME_CHOICES = listOf(
     Choice(BackgroundMode.SPECTRUM, R.string.bg_spectrum),
     Choice(BackgroundMode.LOFI, R.string.bg_lofi),
     Choice(BackgroundMode.DISCO, R.string.bg_disco),
+    Choice(BackgroundMode.PRISM, R.string.bg_prism),
+    Choice(BackgroundMode.PULSE, R.string.bg_pulse),
+    Choice(BackgroundMode.NEON, R.string.bg_neon),
     Choice(BackgroundMode.BLACK, R.string.bg_black),
+    Choice(BackgroundMode.OLED_MINIMAL, R.string.bg_oled_minimal),
+    Choice(BackgroundMode.HIGH_CONTRAST, R.string.bg_high_contrast),
+    Choice(BackgroundMode.PAPER, R.string.bg_paper),
 )
 
 private val HIGHLIGHT_CHOICES = listOf(

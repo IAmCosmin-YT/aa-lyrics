@@ -87,17 +87,34 @@ word timing produces a continuous left-to-right fill across wrapped lines.
 **Touch:** rows are ≥ 64 dp with ripple feedback. Dragging the list pauses auto-scroll; it resumes
 4 s after release, or immediately via the "Resume auto-scroll" pill.
 
+## Duets and backing vocals
+
+- **Voices:** `v1:` / `v2:` / `v1000:` prefixes (enhanced LRC), TTML `ttm:agent` and LyricsPlus
+  singer fields mark who sings. When a song has both singers, singer 1 is aligned left, singer 2
+  right (with its own highlight color) and "together" lines centered.
+- **Backing vocals:** `[bg: …]` lines, TTML `x-bg` spans, LyricsPlus/Paxsenix background syllables
+  and any `(parenthesised)` part of a line become a smaller, subdued sub-line under the main line,
+  animated with its own timing. A line that is entirely in parentheses is drawn in that style.
+- **Overlap:** a line stays lit until its last word (or backing vocal) ends, even after the next
+  line has started, so overlapping duet lines animate together and the view centers on both.
+
 ## Settings (⚙ in the phone app — applied to the car screen too)
 
 The phone and the car draw with the **same renderer** (`render/`), so every option below looks
 identical on Android Auto. The settings screen has a live preview at the top.
 
-- **Theme:** Cover blend (default — blurred cover art in slowly rotating discs that blend into
+- **Theme:** Prism (hue-cycling vivid mesh), Pulse (saturated album colors that swell with the
+  vocals), Neon (light bands sweeping across dark), OLED minimal (true black, grey text, no glow),
+  High contrast (black, white text, yellow highlight, no blur), Paper (light background, dark ink
+  text, for bright daylight); Cover blend (default — blurred cover art in slowly rotating discs that blend into
   each other), album colors (moving / still), blurred album art, Spectrum, Lofi vinyl (grain,
   vignette, spinning record), Disco (cycling neon, spotlights, pulses on sung words), Black (OLED).
-- **Animation:** Expressive (default, Metrolist-style: letters fill with a soft edge, words wobble
-  as they start, the filling letter nudges up, held notes glow, multi-syllable words grow,
-  ripple and spring back), Beautiful ( inspired by the Beautiful Lyrics Spicetify extension:
+- **Animation:** every style runs on one kinetic letter engine with its own physics profile:
+  soft per-letter fill, a swell and damped tilt on each syllable's impact, letter-spacing that
+  breathes out while a word is sung, a **hold** state for sustained notes (horizontal stretch,
+  gentle pulse, glow, then a spring back instead of snapping off), multi-syllable crescendo with a
+  wave, and neighbour push that respects left/center/right alignment. Expressive (default,
+  Metrolist-style, strongest), Beautiful ( inspired by the Beautiful Lyrics Spicetify extension:
   each syllable swells, lifts and glows as a soft gradient sweeps across it, long held notes
   animate letter by letter, instrumental breaks show three filling dots that breathe and shrink
   away before the vocals return), Fluid (soft wipe, sung words float up, held notes swell and glow), Karaoke

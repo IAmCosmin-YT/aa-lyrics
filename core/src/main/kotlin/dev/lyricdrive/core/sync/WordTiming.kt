@@ -64,7 +64,18 @@ object WordTimingEstimator {
     }
 
     fun estimate(line: LyricLine, syllableMs: Long = DEFAULT_SYLLABLE_MS): LyricLine {
-        if (line.hasWordTiming || line.isInterlude) return line
+        // Backing vocals get the same treatment as their line.
+        val backing = line.backing?.let { b ->
+            if (b.hasWordTiming) b else {
+                val est = estimateWords(LyricLine(b.startMs, b.endMs, b.text), syllableMs)
+                b.copy(words = est.words)
+            }
+        }
+        return estimateWords(line, syllableMs).copy(backing = backing)
+    }
+
+    private fun estimateWords(line: LyricLine, syllableMs: Long): LyricLine {
+        if (line.hasWordTiming || line.text.isBlank()) return line
         val available = line.endMs - line.startMs
         if (available <= 0) return line
         val tokens = TOKEN.findAll(line.text).map { it.value }.toList()
@@ -96,6 +107,6 @@ fun LyricsTimeline.withWordHighlight(mode: WordHighlight): LyricsTimeline = when
     WordHighlight.OFF -> withoutWordTiming()
     WordHighlight.TIMED_ONLY -> this
     WordHighlight.AUTO ->
-        if (lines.all { it.hasWordTiming || it.isInterlude }) this
+        if (lines.all { (it.hasWordTiming || it.isInterlude) && (it.backing?.hasWordTiming != false) }) this
         else LyricsTimeline(WordTimingEstimator.estimateAll(lines))
 }

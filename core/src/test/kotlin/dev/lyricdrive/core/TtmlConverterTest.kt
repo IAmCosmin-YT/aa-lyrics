@@ -1,6 +1,7 @@
 package dev.lyricdrive.core
 
 import dev.lyricdrive.core.lrc.LrcParser
+import dev.lyricdrive.core.model.Voice
 import dev.lyricdrive.core.ttml.TtmlConverter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -13,7 +14,7 @@ class TtmlConverterTest {
         <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata">
           <head><metadata><translations><translation><text for="L1">ignored</text></translation></translations></metadata></head>
           <body dur="3:05.250"><div>
-            <p begin="00:10.500" end="00:13.000">
+            <p begin="00:10.500" end="00:13.000" ttm:agent="v2">
               <span begin="00:10.500" end="00:11.000">Paper</span> <span begin="00:11.000" end="00:11.400">kites</span>
               <span begin="00:11.400" end="00:11.700">over</span> <span begin="00:11.700" end="00:12.000">the</span>
               <span begin="00:12.000" end="00:12.300">riv</span><span begin="00:12.300" end="00:13.000">er</span>
@@ -35,6 +36,10 @@ class TtmlConverterTest {
         assertEquals(10_500L, first.words[0].startMs)
         assertEquals(13_000L, first.words.last().endMs)
         assertFalse(lines[1].hasWordTiming)
+        // Agent and background vocals are kept.
+        assertEquals(Voice.SINGER_2, first.voice)
+        assertEquals("ooh", first.backing!!.text)
+        assertEquals(12_000L, first.backing!!.startMs)
         assertEquals(65_200L, lines[1].startMs)
     }
 

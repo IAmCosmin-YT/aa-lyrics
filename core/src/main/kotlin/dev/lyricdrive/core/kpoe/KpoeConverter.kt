@@ -1,6 +1,7 @@
 package dev.lyricdrive.core.kpoe
 
 import dev.lyricdrive.core.lrc.LrcParser
+import dev.lyricdrive.core.model.Voice
 import org.json.JSONObject
 
 /**
@@ -28,29 +29,37 @@ object KpoeConverter {
             val line = lines.getJSONObject(i)
             val start = line.optLong("time", -1)
             if (start < 0) continue
-            out.append('[').append(LrcParser.formatTimestamp(start)).append(']')
+            val singer = line.optJSONObject("element")?.optString("singer")?.takeIf { it.isNotBlank() }
+            out.append('[').append(LrcParser.formatTimestamp(start)).append(']').append(LrcParser.voicePrefix(Voice.fromAgent(singer)))
             val syllables = line.optJSONArray("syllabus")
-            var lastEnd = -1L
-            var wrote = false
+            val main = StringBuilder()
+            val bg = StringBuilder()
+            var mainEnd = -1L
+            var bgEnd = -1L
             if (syllables != null) {
                 for (k in 0 until syllables.length()) {
                     val syl = syllables.getJSONObject(k)
-                    if (syl.optBoolean("isBackground", false)) continue
                     val text = syl.optString("text")
                     if (text.isEmpty()) continue
                     val t = syl.optLong("time", -1)
                     if (t < 0) continue
-                    out.append('<').append(LrcParser.formatTimestamp(t)).append('>').append(text.replace(Regex("\\s+"), " "))
-                    lastEnd = t + syl.optLong("duration", 0)
-                    wrote = true
+                    val end = t + syl.optLong("duration", 0)
+                    if (syl.optBoolean("isBackground", false)) {
+                        bg.append('<').append(LrcParser.formatTimestamp(t)).append('>').append(text.replace(Regex("\\s+"), " ").replace("(", "").replace(")", ""))
+                        bgEnd = end
+                    } else {
+                        main.append('<').append(LrcParser.formatTimestamp(t)).append('>').append(text.replace(Regex("\\s+"), " "))
+                        mainEnd = end
+                    }
                 }
             }
-            if (wrote) {
-                out.append('<').append(LrcParser.formatTimestamp(lastEnd)).append('>')
+            if (mainEnd >= 0) {
+                out.append(main).append('<').append(LrcParser.formatTimestamp(mainEnd)).append('>')
             } else {
                 out.append(line.optString("text").trim())
             }
             out.append('\n')
+            if (bgEnd >= 0) out.append("[bg: ").append(bg).append('<').append(LrcParser.formatTimestamp(bgEnd)).append(">]\n")
         }
         return Result(out.toString().takeIf { it.isNotBlank() }, null, source)
     }

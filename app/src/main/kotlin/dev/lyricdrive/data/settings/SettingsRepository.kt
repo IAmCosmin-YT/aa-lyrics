@@ -61,6 +61,24 @@ enum class BackgroundMode {
 
     /** Pure black (best for OLED screens at night). */
     BLACK,
+
+    /** Hue-cycling mesh of vivid colors, slowly rotating around the color wheel. */
+    PRISM,
+
+    /** Album colors, saturated, swelling and brightening with the vocals. */
+    PULSE,
+
+    /** Neon light bands sweeping diagonally across a dark background. */
+    NEON,
+
+    /** True black, soft grey text, white active line, no glow or blur. Minimal and OLED-friendly. */
+    OLED_MINIMAL,
+
+    /** Black background, white text, yellow highlight, no blur: maximum legibility. */
+    HIGH_CONTRAST,
+
+    /** Light paper background with dark ink text (high contrast for bright daylight). */
+    PAPER,
 }
 
 /** How LyricDrive shows up in Android Auto. */

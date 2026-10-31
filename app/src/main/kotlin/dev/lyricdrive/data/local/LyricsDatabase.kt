@@ -36,7 +36,7 @@ interface LyricsDao {
     suspend fun clearMisses()
 }
 
-@Database(entities = [LyricsEntity::class], version = 4, exportSchema = true)
+@Database(entities = [LyricsEntity::class], version = 5, exportSchema = true)
 abstract class LyricsDatabase : RoomDatabase() {
     abstract fun lyricsDao(): LyricsDao
 }

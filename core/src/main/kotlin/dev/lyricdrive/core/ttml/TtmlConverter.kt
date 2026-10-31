@@ -1,6 +1,7 @@
 package dev.lyricdrive.core.ttml
 
 import dev.lyricdrive.core.lrc.LrcParser
+import dev.lyricdrive.core.model.Voice
 import java.io.StringReader
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
@@ -14,10 +15,24 @@ import org.xml.sax.InputSource
  *
  * - `<p begin end>` = one line; `<span begin end>` inside it = one word or syllable.
  * - Whitespace between spans separates words; adjacent spans with no whitespace are syllables.
- * - Background-vocal spans (`ttm:role="x-bg"`) are skipped.
+ * - `ttm:agent` ("v1", "v2", "v1000") becomes a `v1:`/`v2:`/`v1000:` voice prefix.
+ * - Background-vocal spans (`ttm:role="x-bg"`) become a `[bg: …]` line under their line.
  * - Lines without spans become line-synced.
  */
 object TtmlConverter {
+    private class Word(val start: Long, val end: Long?, var text: String)
+
+    private fun appendWords(out: StringBuilder, words: List<Word>, lineEnd: Long?, stripParens: Boolean = false) {
+        words.forEach { w ->
+            var text = w.text.replace(Regex("\\s+"), " ")
+            // Backing spans usually carry their own "(…)"; the sub-line styling replaces them.
+            if (stripParens) text = text.replace("(", "").replace(")", "")
+            out.append('<').append(LrcParser.formatTimestamp(w.start)).append('>').append(text)
+        }
+        val closing = words.last().end ?: lineEnd
+        if (closing != null) out.append('<').append(LrcParser.formatTimestamp(closing)).append('>')
+    }
+
     private const val TTM_NS = "http://www.w3.org/ns/ttml#metadata"
 
     /** `<body dur="...">` when present: lets callers reject a different recording. */
@@ -40,51 +55,58 @@ object TtmlConverter {
             val p = paragraphs.item(i) as Element
             val lineStart = parseTime(p.getAttribute("begin")) ?: continue
             val lineEnd = parseTime(p.getAttribute("end"))
+            val agent = p.getAttributeNS(TTM_NS, "agent").ifEmpty { p.getAttribute("ttm:agent") }.ifEmpty { p.getAttribute("agent") }
 
-            data class Word(val start: Long, val end: Long?, var text: String)
+            class Track {
+                val words = mutableListOf<Word>()
+                val plain = StringBuilder()
+                var pendingSpace = false
+            }
+            val main = Track()
+            val bg = Track()
 
-            val words = mutableListOf<Word>()
-            val plain = StringBuilder()
-            var pendingSpace = false
-            fun visit(node: Node) {
+            fun visit(node: Node, target: Track) {
                 when (node.nodeType) {
                     Node.TEXT_NODE -> {
                         val text = node.nodeValue
                         if (text.isBlank()) {
-                            if (text.isNotEmpty()) pendingSpace = true
+                            if (text.isNotEmpty()) target.pendingSpace = true
                         } else {
-                            plain.append(text)
+                            target.plain.append(text)
                         }
                     }
                     Node.ELEMENT_NODE -> {
                         val el = node as Element
-                        if (el.localName == "span" && el.getAttributeNS(TTM_NS, "role").ifEmpty { el.getAttribute("ttm:role") } == "x-bg") return
+                        val isBg = el.localName == "span" && el.getAttributeNS(TTM_NS, "role").ifEmpty { el.getAttribute("ttm:role") } == "x-bg"
+                        val into = if (isBg) bg else target
                         val begin = if (el.localName == "span") parseTime(el.getAttribute("begin")) else null
-                        if (begin != null) {
-                            if (pendingSpace && words.isNotEmpty()) words.last().text += " "
-                            pendingSpace = false
+                        val hasChildSpans = (0 until el.childNodes.length).any { (el.childNodes.item(it) as? Element)?.localName == "span" }
+                        if (begin != null && !hasChildSpans) {
+                            if (into.pendingSpace && into.words.isNotEmpty()) into.words.last().text += " "
+                            into.pendingSpace = false
                             val text = el.textContent
-                            if (text.isNotEmpty() && text.first().isWhitespace() && words.isNotEmpty()) words.last().text += " "
-                            words += Word(begin, parseTime(el.getAttribute("end")), text.trim() + if (text.last().isWhitespace()) " " else "")
+                            if (text.isBlank()) return
+                            if (text.first().isWhitespace() && into.words.isNotEmpty()) into.words.last().text += " "
+                            into.words += Word(begin, parseTime(el.getAttribute("end")), text.trim() + if (text.last().isWhitespace()) " " else "")
                         } else {
                             val children = el.childNodes
-                            for (c in 0 until children.length) visit(children.item(c))
+                            for (c in 0 until children.length) visit(children.item(c), into)
                         }
                     }
                 }
             }
             val children = p.childNodes
-            for (c in 0 until children.length) visit(children.item(c))
+            for (c in 0 until children.length) visit(children.item(c), main)
 
             out.append('[').append(LrcParser.formatTimestamp(lineStart)).append(']')
-            if (words.isEmpty()) {
-                out.append(plain.toString().trim())
-            } else {
-                words.forEach { w -> out.append('<').append(LrcParser.formatTimestamp(w.start)).append('>').append(w.text.replace(Regex("\\s+"), " ")) }
-                val closing = words.last().end ?: lineEnd
-                if (closing != null) out.append('<').append(LrcParser.formatTimestamp(closing)).append('>')
-            }
+            out.append(LrcParser.voicePrefix(Voice.fromAgent(agent.ifEmpty { null })))
+            if (main.words.isEmpty()) out.append(main.plain.toString().trim()) else appendWords(out, main.words, lineEnd)
             out.append('\n')
+            if (bg.words.isNotEmpty()) {
+                out.append("[bg: ")
+                appendWords(out, bg.words, null, stripParens = true)
+                out.append("]\n")
+            }
         }
         return out.toString().takeIf { it.isNotBlank() }
     }

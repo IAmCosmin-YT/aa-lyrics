@@ -73,13 +73,15 @@ class PreviewSceneSource(
 
     private companion object {
         const val LOOP_MS = 15_000L
-        // Original sample text written for the preview.
+        // Original sample text written for the preview: a duet (singer 1 left, singer 2 right,
+        // "together" centered) with backing vocals, a held note and an overlapping line.
         val SAMPLE = """
-            [00:00.30]<00:00.30>Headlights <00:00.90>paint <00:01.30>the <00:01.50>empty <00:02.10>road <00:02.80>
-            [00:03.20]<00:03.20>Counting <00:03.80>every <00:04.30>mile <00:04.80>marker <00:05.50>home <00:06.20>
-            [00:06.60]<00:06.60>Windows <00:07.10>down, <00:07.60>the <00:07.80>radio <00:08.50>hums <00:09.20>
-            [00:09.60]<00:09.60>Somewhere <00:10.30>past <00:10.70>the <00:10.90>county <00:11.50>line <00:12.30>
-            [00:12.70]
+            [00:00.30]v1: <00:00.30>Head<00:00.60>lights <00:00.90>paint <00:01.30>the <00:01.50>empty <00:02.10>road <00:02.80>
+            [00:03.20]v2: <00:03.20>Counting <00:03.80>every <00:04.30>mile <00:04.80>marker <00:05.50>home <00:06.90>
+            [bg: <00:05.00>(home, <00:05.60>home)<00:06.40>]
+            [00:06.00]v1: <00:06.00>Windows <00:06.50>down, <00:07.00>the <00:07.20>radio <00:07.90>hums <00:08.60>
+            [00:09.00]v1000: <00:09.00>Some<00:09.40>where <00:09.80>past <00:10.20>the <00:10.40>county <00:11.00>liiine <00:12.80>
+            [00:13.30]
         """.trimIndent()
     }
 }

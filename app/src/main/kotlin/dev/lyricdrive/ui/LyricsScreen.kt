@@ -26,6 +26,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +61,7 @@ import dev.lyricdrive.core.model.LyricsState
 import dev.lyricdrive.core.sync.WordHighlight
 import dev.lyricdrive.render.LiveSceneSource
 import dev.lyricdrive.render.LyricsController
+import dev.lyricdrive.render.theme
 import dev.lyricdrive.ui.components.LyricsCanvas
 
 @Composable
@@ -91,6 +94,12 @@ fun LyricsScreen(vm: LyricsViewModel, onOpenSettings: () -> Unit) {
     var showSync by rememberSaveable { mutableStateOf(false) }
     val offset by vm.offsetMs.collectAsStateWithLifecycle()
 
+    // Header and controls follow the theme: dark on the light Paper theme, white otherwise.
+    val light = settings.backgroundMode.theme().light
+    CompositionLocalProvider(
+        LocalChrome provides if (light) Color(0xFF1C1B1A) else Color.White,
+        LocalChromeInverse provides if (light) Color(0xFFF5F1E8) else Color.Black,
+    ) {
     Box(Modifier.fillMaxSize()) {
         LyricsCanvas(controller, Modifier.fillMaxSize(), lyricsArea = { area })
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -128,7 +137,12 @@ fun LyricsScreen(vm: LyricsViewModel, onOpenSettings: () -> Unit) {
             Controls(ui.snapshot.isPlaying, vm::skipToPrevious, vm::togglePlayPause, vm::skipToNext)
         }
     }
+    }
 }
+
+/** Foreground color of the lyrics screen's own chrome (header, buttons). */
+private val LocalChrome = staticCompositionLocalOf { Color.White }
+private val LocalChromeInverse = staticCompositionLocalOf { Color.Black }
 
 /** Tells the user whether the fill follows real word timing, an estimate, or whole lines. */
 @Composable
@@ -161,18 +175,18 @@ private fun Header(ui: NowPlayingUi, badge: String?, onSync: () -> Unit, onSetti
         }
         Column(Modifier.weight(1f)) {
             if (track != null) {
-                Text(track.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = Color.White.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                badge?.let { Text(it, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1) }
+                Text(track.title, color = LocalChrome.current, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.artist, color = LocalChrome.current.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                badge?.let { Text(it, color = LocalChrome.current.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1) }
             }
         }
         if (track != null) {
             IconButton(onClick = onSync, modifier = Modifier.size(56.dp)) {
-                Icon(painterResource(R.drawable.ic_sync), stringResource(R.string.song_sync), tint = Color.White)
+                Icon(painterResource(R.drawable.ic_sync), stringResource(R.string.song_sync), tint = LocalChrome.current)
             }
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(56.dp)) {
-            Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.settings), tint = Color.White)
+            Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.settings), tint = LocalChrome.current)
         }
     }
 }
@@ -185,24 +199,24 @@ private fun SyncBar(songOffset: Long, onNudge: (Long) -> Unit, onReset: () -> Un
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.Black.copy(alpha = 0.45f))
+            .background(LocalChromeInverse.current.copy(alpha = 0.45f))
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         TextButton(onClick = { onNudge(-100) }, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("− " + stringResource(R.string.lyrics_earlier), color = Color.White)
+            Text("− " + stringResource(R.string.lyrics_earlier), color = LocalChrome.current)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(formatOffset(songOffset), color = Color.White, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.song_sync), color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            Text(formatOffset(songOffset), color = LocalChrome.current, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.song_sync), color = LocalChrome.current.copy(alpha = 0.6f), fontSize = 11.sp)
         }
         TextButton(onClick = { onNudge(100) }, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(stringResource(R.string.lyrics_later) + " +", color = Color.White)
+            Text(stringResource(R.string.lyrics_later) + " +", color = LocalChrome.current)
         }
         if (songOffset != 0L) {
             TextButton(onClick = onReset, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.reset), color = Color.White.copy(alpha = 0.8f))
+                Text(stringResource(R.string.reset), color = LocalChrome.current.copy(alpha = 0.8f))
             }
         }
     }
@@ -216,12 +230,12 @@ private fun Controls(playing: Boolean, onPrevious: () -> Unit, onPlayPause: () -
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
-            Icon(painterResource(R.drawable.ic_skip_previous), stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(32.dp))
+            Icon(painterResource(R.drawable.ic_skip_previous), stringResource(R.string.previous), tint = LocalChrome.current, modifier = Modifier.size(32.dp))
         }
         FilledIconButton(
             onClick = onPlayPause,
             modifier = Modifier.size(72.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White, contentColor = Color.Black),
+            colors = IconButtonDefaults.filledIconButtonColors(containerColor = LocalChrome.current, contentColor = LocalChromeInverse.current),
         ) {
             Icon(
                 painterResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play),
@@ -230,7 +244,7 @@ private fun Controls(playing: Boolean, onPrevious: () -> Unit, onPlayPause: () -
             )
         }
         IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
-            Icon(painterResource(R.drawable.ic_skip_next), stringResource(R.string.next), tint = Color.White, modifier = Modifier.size(32.dp))
+            Icon(painterResource(R.drawable.ic_skip_next), stringResource(R.string.next), tint = LocalChrome.current, modifier = Modifier.size(32.dp))
         }
     }
 }

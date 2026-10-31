@@ -1,6 +1,7 @@
 package dev.lyricdrive.core.sync
 
 import dev.lyricdrive.core.model.LyricLine
+import dev.lyricdrive.core.model.filledCharacters
 
 /**
  * Time lookups over synced lines. All queries are O(log n) so they are cheap enough
@@ -32,21 +33,29 @@ class LyricsTimeline(val lines: List<LyricLine>) {
      */
     fun filledCharacters(index: Int, positionMs: Long): Float {
         val line = lines.getOrNull(index) ?: return 0f
-        if (positionMs < line.startMs) return 0f
-        if (!line.hasWordTiming) return line.text.length.toFloat()
+        return filledCharacters(line.text, line.words, line.startMs, positionMs)
+    }
 
-        var chars = 0f
-        for (word in line.words) {
-            when {
-                positionMs >= word.endMs -> chars += word.text.length
-                positionMs <= word.startMs -> return chars
-                else -> {
-                    val span = (word.endMs - word.startMs).coerceAtLeast(1)
-                    return chars + word.text.length * (positionMs - word.startMs).toFloat() / span
-                }
-            }
+    /** Like [filledCharacters] for the line's backing vocals. */
+    fun backingFilled(index: Int, positionMs: Long): Float {
+        val backing = lines.getOrNull(index)?.backing ?: return 0f
+        return filledCharacters(backing.text, backing.words, backing.startMs, positionMs)
+    }
+
+    /**
+     * Every line being sung at [positionMs], ascending. Usually just [activeIndex], but in duets
+     * and with backing vocals an earlier line can still be sung after the next one has started.
+     */
+    fun activeIndices(positionMs: Long): List<Int> {
+        val primary = activeIndex(positionMs)
+        if (primary < 0) return emptyList()
+        val out = ArrayList<Int>(2)
+        for (i in maxOf(0, primary - MAX_OVERLAP_LOOKBACK) until primary) {
+            val line = lines[i]
+            if (!line.isInterlude && line.activeUntilMs > positionMs && line.startMs <= positionMs) out += i
         }
-        return chars
+        out += primary
+        return out
     }
 
     /** 0..1 progress through line [index] (used for interlude dots and progress hints). */
@@ -64,7 +73,8 @@ class LyricsTimeline(val lines: List<LyricLine>) {
 
     /** Same lines with word timings dropped, so every line lights up whole when it becomes active. */
     fun withoutWordTiming(): LyricsTimeline =
-        if (lines.none { it.hasWordTiming }) this else LyricsTimeline(lines.map { it.copy(words = emptyList()) })
+        if (lines.none { it.hasWordTiming || it.backing?.hasWordTiming == true }) this
+        else LyricsTimeline(lines.map { it.copy(words = emptyList(), backing = it.backing?.copy(words = emptyList())) })
 
     /**
      * Inserts interlude rows (rendered as breathing dots) where the vocals pause for at least
@@ -78,7 +88,7 @@ class LyricsTimeline(val lines: List<LyricLine>) {
         if (!first.isInterlude && first.startMs >= minGapMs) out += LyricLine(0, first.startMs, "")
         lines.forEachIndexed { i, line ->
             val next = lines.getOrNull(i + 1)
-            val sungEnd = line.words.lastOrNull()?.endMs
+            val sungEnd = line.words.lastOrNull()?.endMs?.let { maxOf(it, line.backing?.words?.lastOrNull()?.endMs ?: 0L) }
             if (next != null && sungEnd != null && !line.isInterlude && !next.isInterlude && next.startMs - sungEnd >= minGapMs) {
                 out += line.copy(endMs = sungEnd)
                 out += LyricLine(sungEnd, next.startMs, "")
@@ -90,6 +100,9 @@ class LyricsTimeline(val lines: List<LyricLine>) {
     }
 
     companion object {
+        /** How many earlier lines may still be sung when a new one starts. */
+        private const val MAX_OVERLAP_LOOKBACK = 6
+
         val EMPTY = LyricsTimeline(emptyList())
     }
 }

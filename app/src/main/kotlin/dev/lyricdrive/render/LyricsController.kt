@@ -137,6 +137,9 @@ class LyricsController(
         val position = source.positionMs(now)
         val active = if (synced) timeline.activeIndex(position) else -1
         val filled = if (active >= 0) timeline.filledCharacters(active, position) else 0f
+        // Duets / backing vocals: earlier lines can still be sung while the next one runs.
+        val activeSet = if (synced) timeline.activeIndices(position).toSet() else emptySet()
+        val firstActive = activeSet.minOrNull() ?: active
 
         updateBeat(dt, lines, active, position, moving)
 
@@ -151,9 +154,9 @@ class LyricsController(
             springTarget = Float.NaN
             spring.cancel()
             fling?.cancel()
-            scroll.value = if (lines.isEmpty()) 0f else painter.scrollTargetFor(lines, active.coerceAtLeast(0), contentRect, lastTextSize, theme.typeface)
+            scroll.value = if (lines.isEmpty()) 0f else painter.scrollTargetFor(lines, firstActive.coerceAtLeast(0), active.coerceAtLeast(0), contentRect, lastTextSize, theme.typeface)
         } else if (isFollowing && synced && lines.isNotEmpty()) {
-            val target = painter.scrollTargetFor(lines, active.coerceAtLeast(0), contentRect, lastTextSize, theme.typeface)
+            val target = painter.scrollTargetFor(lines, firstActive.coerceAtLeast(0), active.coerceAtLeast(0), contentRect, lastTextSize, theme.typeface)
             if (style.springDamping == null || expansionSpring.isRunning) {
                 spring.cancel()
                 scroll.value = target
@@ -167,8 +170,10 @@ class LyricsController(
         // Colors.
         val ambient = resolveAmbient(prefs.nightMode, nightSignal(), ambientSensor())
         val albumPalette = source.palette
-        val palette = prefs.backgroundMode.palette(albumPalette).forAmbient(ambient)
+        // Light themes stay light: no night darkening or scrim (their dark text needs the contrast).
+        val palette = prefs.backgroundMode.palette(albumPalette).let { if (theme.light) it else it.forAmbient(ambient) }
         val highlight = resolveHighlight(prefs.highlightColor, theme, style, palette, albumPalette, beatIndex, prefs.backgroundMode)
+        val highlight2 = resolveHighlight2(theme, palette, highlight, prefs.highlightColor)
 
         background.draw(
             canvas,
@@ -183,7 +188,7 @@ class LyricsController(
                 activity = activity,
                 beatIndex = beatIndex,
                 partyAllowed = !moving,
-                scrim = scrimFor(theme, ambient),
+                scrim = if (theme.light) 0f else scrimFor(theme, ambient),
             ),
         )
 
@@ -197,6 +202,7 @@ class LyricsController(
                 lines = lines,
                 synced = synced,
                 activeIndex = active,
+                activeSet = activeSet,
                 positionMs = position,
                 filledCharacters = filled,
                 lineProgress = if (active >= 0) timeline.lineProgress(active, position) else 0f,
@@ -205,7 +211,9 @@ class LyricsController(
                 style = style,
                 theme = theme,
                 highlight = highlight,
-                textAlpha = textAlphaFor(ambient),
+                highlight2 = highlight2,
+                textColor = theme.textColor,
+                textAlpha = if (theme.light) 1f else textAlphaFor(ambient),
                 expansion = expansion,
                 artwork = source.artwork,
                 title = track?.title,
