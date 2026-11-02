@@ -38,10 +38,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +86,7 @@ import dev.lyricdrive.data.settings.NightMode
 import dev.lyricdrive.render.LiveSceneSource
 import dev.lyricdrive.render.LyricsController
 import dev.lyricdrive.render.PreviewSceneSource
+import dev.lyricdrive.render.theme
 import dev.lyricdrive.render.complementary
 import dev.lyricdrive.ui.components.LyricsCanvas
 import dev.lyricdrive.ui.components.ThemeBackground
@@ -112,16 +116,11 @@ private val ANIMATION_CHOICES = listOf(
 
 private val THEME_CHOICES = listOf(
     Choice(BackgroundMode.COVER_BLEND, R.string.bg_cover_blend),
-    Choice(BackgroundMode.ALBUM_FLUID, R.string.bg_album_fluid),
-    Choice(BackgroundMode.ALBUM_ART, R.string.bg_album_art),
-    Choice(BackgroundMode.ALBUM_GRADIENT, R.string.bg_album_gradient),
     Choice(BackgroundMode.SPECTRUM, R.string.bg_spectrum),
     Choice(BackgroundMode.LOFI, R.string.bg_lofi),
     Choice(BackgroundMode.DISCO, R.string.bg_disco),
     Choice(BackgroundMode.PRISM, R.string.bg_prism),
-    Choice(BackgroundMode.PULSE, R.string.bg_pulse),
     Choice(BackgroundMode.NEON, R.string.bg_neon),
-    Choice(BackgroundMode.BLACK, R.string.bg_black),
     Choice(BackgroundMode.OLED_MINIMAL, R.string.bg_oled_minimal),
     Choice(BackgroundMode.HIGH_CONTRAST, R.string.bg_high_contrast),
     Choice(BackgroundMode.PAPER, R.string.bg_paper),
@@ -155,12 +154,28 @@ private val NIGHT_CHOICES = listOf(
     Choice(NightMode.NEVER, R.string.night_never, R.string.night_never_desc),
 )
 
+private enum class SettingsPage(val title: Int) {
+    APPEARANCE(R.string.settings_appearance), PLAYBACK(R.string.settings_playback),
+    CAR(R.string.section_car), APP(R.string.settings_app),
+}
+
 @Composable
 fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val ui by vm.ui.collectAsStateWithLifecycle()
     val update = vm::updateSettings
-    val context = LocalContext.current
+    var page by rememberSaveable { mutableStateOf(SettingsPage.APPEARANCE) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var showPreview by rememberSaveable { mutableStateOf(false) }
+    val pageScroll = rememberScrollState()
+    LaunchedEffect(page) { pageScroll.scrollTo(0) }
+    if (confirmClear) AlertDialog(
+        onDismissRequest = { confirmClear = false },
+        title = { Text(stringResource(R.string.cache_clear)) },
+        text = { Text(stringResource(R.string.cache_clear_confirm)) },
+        confirmButton = { TextButton(onClick = { vm.clearLyricsCache(); confirmClear = false }) { Text(stringResource(R.string.cache_clear)) } },
+        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.cancel)) } },
+    )
 
     Box(Modifier.fillMaxSize().background(Color(0xFF0B0814))) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -171,35 +186,51 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                 Text(stringResource(R.string.settings), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             }
 
-            LivePreview(vm, Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(190.dp))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                SettingsPage.entries.forEach { item ->
+                    TextButton(
+                        onClick = { page = item },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).background(if (page == item) Color.White.copy(alpha = 0.14f) else Color.Transparent, RoundedCornerShape(16.dp)),
+                    ) { Text(stringResource(item.title), color = if (page == item) Color.White else Muted, fontSize = 12.sp, maxLines = 2, textAlign = TextAlign.Center, fontWeight = if (page == item) FontWeight.Bold else FontWeight.Normal) }
+                }
+            }
 
             Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.fillMaxSize().verticalScroll(pageScroll).padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Section(R.string.section_permissions) { PermissionControls() }
-                Section(R.string.section_cache) {
+                if (page == SettingsPage.APPEARANCE) {
+                    TextButton(onClick = { showPreview = !showPreview }) {
+                        Text(stringResource(if (showPreview) R.string.preview_hide else R.string.preview_show), color = Color.White)
+                    }
+                    if (showPreview) LivePreview(vm, Modifier.fillMaxWidth().height(180.dp))
+                    Text(stringResource(R.string.appearance_hint), color = Muted, fontSize = 13.sp)
+                }
+                if (page == SettingsPage.APP) Section(R.string.section_battery) { BackgroundActivityControls() }
+                if (page == SettingsPage.APP) Section(R.string.section_permissions) { PermissionControls() }
+                if (page == SettingsPage.APP) Section(R.string.section_cache) {
                     val count by vm.cachedSongCount.collectAsStateWithLifecycle()
                     val error by vm.cacheError.collectAsStateWithLifecycle()
                     Text(stringResource(R.string.cache_description, count), color = Muted, fontSize = 13.sp)
-                    TextButton(onClick = vm::clearLyricsCache) { Text(stringResource(R.string.cache_clear), color = Color.White) }
+                    TextButton(onClick = { confirmClear = true }) { Text(stringResource(R.string.cache_clear), color = Color.White) }
                     if (error) Text(stringResource(R.string.cache_clear_error), color = Color.White)
                 }
-                Section(R.string.section_theme) {
-                    Grid(THEME_CHOICES, columns = 3) { choice ->
+                if (page == SettingsPage.APPEARANCE) Section(R.string.section_theme) {
+                    Grid(THEME_CHOICES, columns = 2) { choice ->
                         ThemeTile(choice, selected = settings.backgroundMode == choice.value, palette = ui.palette) {
                             update { it.copy(backgroundMode = choice.value) }
                         }
                     }
                 }
-                Section(R.string.section_animation) {
+                if (page == SettingsPage.APPEARANCE) Section(R.string.section_animation) {
                     Grid(ANIMATION_CHOICES, columns = 2) { choice ->
                         OptionCard(choice, selected = settings.animationStyle == choice.value) {
                             update { it.copy(animationStyle = choice.value) }
                         }
                     }
                 }
-                Section(R.string.section_highlight) {
+                if (page == SettingsPage.APPEARANCE) Section(R.string.section_highlight) {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         HIGHLIGHT_CHOICES.forEach { choice ->
                             Swatch(choice, selected = settings.highlightColor == choice.value, albumPrimary = ui.palette.primary) {
@@ -208,10 +239,10 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                         }
                     }
                 }
-                Section(R.string.section_word) {
+                if (page == SettingsPage.PLAYBACK) Section(R.string.section_word) {
                     Segmented(WORD_CHOICES, settings.wordHighlight) { v -> update { it.copy(wordHighlight = v) } }
                 }
-                Section(R.string.section_sync) {
+                if (page == SettingsPage.PLAYBACK) Section(R.string.section_sync) {
                     val route by vm.outputRoute.collectAsStateWithLifecycle()
                     val delay by vm.routeDelayMs.collectAsStateWithLifecycle()
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -228,7 +259,7 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     )
                     Text(stringResource(R.string.audio_delay_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
                 }
-                Section(R.string.section_sources) {
+                if (page == SettingsPage.APP) Section(R.string.section_sources) {
                     Text(stringResource(R.string.sources_desc), color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
@@ -243,10 +274,10 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                         TextButton(onClick = { update { it.copy(lyricsPlusServer = "") } }) { Text(stringResource(R.string.disable), color = Color.White) }
                     }
                 }
-                Section(R.string.section_night) {
+                if (page == SettingsPage.APPEARANCE) Section(R.string.section_night) {
                     Segmented(NIGHT_CHOICES, settings.nightMode) { v -> update { it.copy(nightMode = v) } }
                 }
-                Section(R.string.section_car) {
+                if (page == SettingsPage.CAR) Section(R.string.section_car) {
                     Text(stringResource(R.string.aa_mode), color = Color.White, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
                     if (AA_MODE_CHOICES.size > 1) {
@@ -276,9 +307,9 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                     ) { v -> update { it.copy(fullScreenWhenParked = v) } }
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.car_driving_note), color = Muted, fontSize = 12.sp)
-                    Spacer(Modifier.height(16.dp))
-                    CarDiagnosticsCard()
+
                 }
+                if (page == SettingsPage.APP) Section(R.string.diagnostics_title) { CarDiagnosticsCard() }
                 Text(
                     stringResource(R.string.version_label, BuildConfig.VERSION_NAME),
                     color = Muted,
@@ -360,6 +391,8 @@ private fun ThemeTile(choice: Choice<BackgroundMode>, selected: Boolean, palette
                 .border(if (selected) BorderStroke(2.5.dp, Color.White) else BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)), RoundedCornerShape(14.dp)),
         ) {
             ThemeBackground(choice.value, palette, Modifier.fillMaxSize(), animate = false)
+            Text("Aa", color = Color(choice.value.theme().highlight ?: choice.value.theme().textColor),
+                fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
             if (selected) CheckBadge(Modifier.align(Alignment.TopEnd).padding(6.dp))
         }
         Text(
@@ -426,36 +459,22 @@ private fun Swatch(choice: Choice<HighlightColor>, selected: Boolean, albumPrima
 
 @Composable
 private fun <T> Segmented(choices: List<Choice<T>>, selected: T, onSelect: (T) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = 0.07f)).padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         choices.forEach { choice ->
-            val isSelected = choice.value == selected
-            Box(
-                Modifier
-                    .weight(1f)
-                    .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isSelected) Color.White else Color.Transparent)
-                    .selectable(isSelected, role = Role.Tab) { onSelect(choice.value) }
-                    .padding(horizontal = 4.dp),
-                contentAlignment = Alignment.Center,
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(if (selected == choice.value) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f))
+                    .selectable(selected == choice.value, role = Role.RadioButton) { onSelect(choice.value) }
+                    .heightIn(min = 56.dp).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    stringResource(choice.label),
-                    color = if (isSelected) Color.Black else Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    lineHeight = 15.sp,
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(choice.label), color = Color.White, fontWeight = FontWeight.SemiBold)
+                    choice.hint?.let { Text(stringResource(it), color = Muted, fontSize = 12.sp, lineHeight = 17.sp) }
+                }
+                if (selected == choice.value) CheckBadge(Modifier.padding(start = 12.dp))
             }
         }
-    }
-    choices.firstOrNull { it.value == selected }?.hint?.let {
-        Text(stringResource(it), color = Muted, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 8.dp, start = 4.dp))
     }
 }
 

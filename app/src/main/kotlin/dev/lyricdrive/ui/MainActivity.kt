@@ -81,8 +81,8 @@ class MainActivity : ComponentActivity() {
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 BackHandler(enabled = showSettings) { showSettings = false }
                 when {
-                    !granted -> OnboardingScreen()
                     showSettings -> SettingsScreen(viewModel, onBack = { showSettings = false })
+                    !granted -> OnboardingScreen(onOpenSettings = { showSettings = true })
                     else -> LyricsScreen(viewModel, onOpenSettings = { showSettings = true })
                 }
             }

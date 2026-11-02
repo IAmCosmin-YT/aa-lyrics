@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -130,11 +131,28 @@ fun LyricsScreen(vm: LyricsViewModel, onOpenSettings: () -> Unit) {
                             change.consume()
                         }
                     },
-            )
+            ) {
+                if (ui.track == null) Column(
+                    Modifier.align(Alignment.Center).padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(stringResource(R.string.ready_title), color = LocalChrome.current, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.ready_body), color = LocalChrome.current.copy(alpha = 0.7f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Button(onClick = {
+                        try {
+                            context.startActivity(android.content.Intent.makeMainSelectorActivity(android.content.Intent.ACTION_MAIN, android.content.Intent.CATEGORY_APP_MUSIC))
+                        } catch (error: android.content.ActivityNotFoundException) {
+                            android.widget.Toast.makeText(context, R.string.ready_no_player, android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }) { Text(stringResource(R.string.ready_open_music)) }
+                    TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.ready_settings), color = LocalChrome.current) }
+                }
+            }
             if (showSync && ui.track != null) {
                 SyncBar(songOffset = remember(offset) { vm.songOffsetMs() }, onNudge = vm::nudgeSongOffset, onReset = vm::resetSongOffset)
             }
-            Controls(ui.snapshot.isPlaying, vm::skipToPrevious, vm::togglePlayPause, vm::skipToNext)
+            if (ui.track != null) Controls(ui.snapshot.isPlaying, vm::skipToPrevious, vm::togglePlayPause, vm::skipToNext)
         }
     }
     }

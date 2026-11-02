@@ -81,6 +81,14 @@ enum class BackgroundMode {
     PAPER,
 }
 
+/** Consolidated gallery; retain enum names so older preferences can be migrated safely. */
+fun BackgroundMode.galleryChoice(): BackgroundMode = when (this) {
+    BackgroundMode.ALBUM_FLUID, BackgroundMode.ALBUM_ART, BackgroundMode.ALBUM_GRADIENT,
+    BackgroundMode.PULSE -> BackgroundMode.COVER_BLEND
+    BackgroundMode.BLACK -> BackgroundMode.OLED_MINIMAL
+    else -> this
+}
+
 /** How LyricDrive shows up in Android Auto. */
 enum class AndroidAutoMode {
     /** Animated lyrics beside Google Maps (split view): registered as a weather app. Car variant. */
@@ -171,7 +179,8 @@ class SettingsRepository(context: Context) {
     val settings: StateFlow<LyricSettings> = _settings.asStateFlow()
 
     fun update(transform: (LyricSettings) -> LyricSettings) {
-        val next = transform(_settings.value)
+        val proposed = transform(_settings.value)
+        val next = proposed.copy(backgroundMode = proposed.backgroundMode.galleryChoice())
         prefs.edit()
             .putString(KEY_WORD_HIGHLIGHT, next.wordHighlight.name)
             .putString(KEY_ANIMATION, next.animationStyle.name)
@@ -195,7 +204,7 @@ class SettingsRepository(context: Context) {
         return LyricSettings(
             wordHighlight = enumOr(KEY_WORD_HIGHLIGHT, legacyWord ?: WordHighlight.AUTO),
             animationStyle = enumOr(KEY_ANIMATION, AnimationStyle.EXPRESSIVE),
-            backgroundMode = enumOr(KEY_BACKGROUND, BackgroundMode.COVER_BLEND),
+            backgroundMode = enumOr(KEY_BACKGROUND, BackgroundMode.COVER_BLEND).galleryChoice(),
             nightMode = enumOr(KEY_NIGHT, NightMode.AUTO),
             highlightColor = enumOr(KEY_HIGHLIGHT, HighlightColor.AUTO),
             fullScreenWhenParked = prefs.getBoolean(KEY_FULL_SCREEN_PARKED, true),

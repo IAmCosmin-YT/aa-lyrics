@@ -131,7 +131,7 @@ class LyricsController(
         var message: String? = null
         var subMessage: String? = track?.artist
         when (state) {
-            LyricsState.Idle -> { message = context.getString(R.string.nothing_playing); subMessage = context.getString(R.string.nothing_playing_hint) }
+            LyricsState.Idle -> { message = if (drawHeader) context.getString(R.string.nothing_playing) else null; subMessage = if (drawHeader) context.getString(R.string.nothing_playing_hint) else null }
             is LyricsState.Loading -> { message = track?.title; subMessage = context.getString(R.string.searching) }
             is LyricsState.NotFound -> { message = track?.title; subMessage = "${track?.artist.orEmpty()} — ${context.getString(R.string.no_lyrics)}" }
             is LyricsState.Unavailable -> { message = track?.title; subMessage = context.getString(R.string.offline) }

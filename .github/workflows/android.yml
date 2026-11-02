@@ -78,3 +78,37 @@ jobs:
         run: |
           echo "::error::App render tests failed, see the Render test report step"
           exit 1
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-apk-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lyricdrive-*-apk-${{ github.run_number }}
+          path: artifacts
+          merge-multiple: true
+      - name: Publish direct APK downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p release
+          cp "artifacts/LyricDrive-car-${BUILD_NUMBER}.apk" release/LyricDrive-car.apk
+          cp "artifacts/LyricDrive-media-${BUILD_NUMBER}.apk" release/LyricDrive-media.apk
+          cat > release-notes.md <<'NOTES'
+          Download one APK below on your phone. Both require Android 10 or newer.
+          - Car: animated lyrics on an Android Auto surface; compatible installation source required.
+          - Media: lyrics in Android Auto's media player alongside navigation.
+          These are debug-signed testing builds. See the README for setup and update instructions.
+          NOTES
+          gh release create "build-${BUILD_NUMBER}" release/LyricDrive-car.apk release/LyricDrive-media.apk \
+            --target "$COMMIT_SHA" --latest --title "LyricDrive build ${BUILD_NUMBER}" --notes-file release-notes.md
