@@ -81,7 +81,7 @@ class NowPlayingSession(
     val artwork: StateFlow<Bitmap?> = observer.player
         .map { it?.artwork to it?.artworkUri }
         .distinctUntilChanged()
-        .mapLatest { (bitmap, uri) -> bitmap ?: uri?.let { artworkLoader.load(it) } }
+        .mapLatest { (bitmap, uri) -> bitmap?.let { artworkLoader.prepare(it) } ?: uri?.let { artworkLoader.load(it) } }
         .stateIn(scope, SharingStarted.Eagerly, null)
 
     val palette: StateFlow<LyricPalette> = artwork

@@ -122,7 +122,7 @@ class LyricsRepository(
                 fallbackUnsynced(raw)
             }
 
-        private val TAGS = Regex("""\[[^\]]*]|<[^>]*>|\{[^}]*}""")
+        private val TAGS = Regex("""\[[^\]]*\]|<[^>]*>|\{[^}]*\}""")
         private val VOICE = Regex("""^v\d+\s*:\s*""", RegexOption.IGNORE_CASE)
 
         private fun fallbackUnsynced(raw: RawLyrics): Lyrics? {

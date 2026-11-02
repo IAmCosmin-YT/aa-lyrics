@@ -134,4 +134,19 @@
     <string name="bg_oled_minimal">OLED minimal</string>
     <string name="bg_high_contrast">High contrast</string>
     <string name="bg_paper">Paper (light)</string>
+    <string name="section_permissions">Permissions</string>
+    <string name="permission_notification_on">Notification access is enabled.</string>
+    <string name="permission_notification_off">Notification access is required to follow music from other apps. Enable LyricDrive on the system settings screen.</string>
+    <string name="permission_audio_on">Local audio access is enabled.</string>
+    <string name="permission_audio_off">Local audio access is optional, for embedded lyrics in files on this phone.</string>
+    <string name="permission_app_settings">Open app settings (permissions or restricted settings)</string>
+    <string name="section_cache">Lyrics cache</string>
+    <string name="cache_description">%1$d songs saved for offline use. Recently used lyrics are also kept in a 1 MB memory cache. Up to 500 lookups are saved on this phone.</string>
+    <string name="cache_clear">Clear saved lyrics</string>
+    <string name="cache_clear_error">Could not clear the cache. Please try again.</string>
+    <string name="recovery_car">Open LyricDrive on your phone to view the startup error.</string>
+    <string name="recovery_title">LyricDrive recovery</string>
+    <string name="recovery_body">The last launch failed. Copy the report below to help diagnose it. If available, open with plain text, no animated background, and no word effects. You can change these settings later.</string>
+    <string name="recovery_safe">Open with safe graphics</string>
+    <string name="recovery_share">Share crash report</string>
 </resources>

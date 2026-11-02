@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 data class NowPlayingUi(
     val track: TrackMetadata? = null,
@@ -44,6 +48,22 @@ class LyricsViewModel(app: Application) : AndroidViewModel(app) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUi())
 
     private val graph = (app as LyricDriveApp).graph
+    val cachedSongCount = graph.cachedSongCount.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    private val _cacheError = MutableStateFlow(false)
+    val cacheError = _cacheError.asStateFlow()
+
+    fun clearLyricsCache() {
+        viewModelScope.launch {
+            _cacheError.value = false
+            try {
+                graph.lyricsCache.clear()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                _cacheError.value = true
+            }
+        }
+    }
 
     /** Output route currently playing (Android Auto, Bluetooth, ...) and its audio delay. */
     val outputRoute = graph.outputRoute.route

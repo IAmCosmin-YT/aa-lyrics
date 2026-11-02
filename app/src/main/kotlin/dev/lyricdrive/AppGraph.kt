@@ -56,9 +56,12 @@ class AppGraph(app: Application) {
     }
 
     val outputRoute = OutputRouteMonitor(app)
+    val lyricsCache = RoomLyricsCache(database.lyricsDao())
+    val cachedSongCount = database.lyricsDao().observeSongCount()
+    val artworkLoader = ArtworkLoader(app)
 
     private val repository = LyricsRepository(
-        cache = RoomLyricsCache(database.lyricsDao()),
+        cache = lyricsCache,
         // Priority: cache (inside the repository) → word-synced sources (BetterLyrics, Apple Music via
         // Paxsenix, Unison, LyricsPlus) → LRCLIB → embedded tags. A line-synced hit keeps looking
         // for word timing; cached line-only songs are re-checked every few days.
@@ -76,7 +79,7 @@ class AppGraph(app: Application) {
         observer = sessionObserver,
         pipeline = LyricsPipeline(repository, debounceMs = 400),
         connectivity = ConnectivityObserver(app),
-        artworkLoader = ArtworkLoader(app),
+        artworkLoader = artworkLoader,
         settings = settings,
         outputRoute = outputRoute.route,
         scope = appScope,

@@ -38,5 +38,15 @@ open class LyricsCarAppService : CarAppService() {
 class LyricsWeatherCarAppService : LyricsCarAppService()
 
 class LyricsCarSession : Session() {
-    override fun onCreateScreen(intent: Intent): Screen = LyricsCarScreen(carContext)
+    override fun onCreateScreen(intent: Intent): Screen {
+        val app = carContext.applicationContext as dev.lyricdrive.LyricDriveApp
+        if (app.startupFailure != null) return object : Screen(carContext) {
+            override fun onGetTemplate(): androidx.car.app.model.Template =
+                androidx.car.app.model.MessageTemplate.Builder(carContext.getString(dev.lyricdrive.R.string.recovery_car))
+                    .setTitle("LyricDrive")
+                    .setHeaderAction(androidx.car.app.model.Action.APP_ICON)
+                    .build()
+        }
+        return LyricsCarScreen(carContext)
+    }
 }

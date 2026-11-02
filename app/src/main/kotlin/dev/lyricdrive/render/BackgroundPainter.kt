@@ -65,7 +65,8 @@ class BackgroundPainter(private val density: Float) {
         canvas.drawColor(input.palette.deep)
 
         // Soft layer (blurred).
-        softLayer(canvas, input) { c ->
+        val flat = input.mode in setOf(BackgroundMode.BLACK, BackgroundMode.OLED_MINIMAL, BackgroundMode.HIGH_CONTRAST, BackgroundMode.PAPER)
+        if (!flat) softLayer(canvas, input) { c ->
             when (input.mode) {
                 BackgroundMode.BLACK, BackgroundMode.OLED_MINIMAL, BackgroundMode.HIGH_CONTRAST, BackgroundMode.PAPER -> Unit
                 BackgroundMode.PRISM -> prism(c, w, h, input)

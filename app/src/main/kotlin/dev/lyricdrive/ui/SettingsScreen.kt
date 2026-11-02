@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -176,6 +177,14 @@ fun SettingsScreen(vm: LyricsViewModel, onBack: () -> Unit) {
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Section(R.string.section_permissions) { PermissionControls() }
+                Section(R.string.section_cache) {
+                    val count by vm.cachedSongCount.collectAsStateWithLifecycle()
+                    val error by vm.cacheError.collectAsStateWithLifecycle()
+                    Text(stringResource(R.string.cache_description, count), color = Muted, fontSize = 13.sp)
+                    TextButton(onClick = vm::clearLyricsCache) { Text(stringResource(R.string.cache_clear), color = Color.White) }
+                    if (error) Text(stringResource(R.string.cache_clear_error), color = Color.White)
+                }
                 Section(R.string.section_theme) {
                     Grid(THEME_CHOICES, columns = 3) { choice ->
                         ThemeTile(choice, selected = settings.backgroundMode == choice.value, palette = ui.palette) {
@@ -301,6 +310,7 @@ private fun LivePreview(vm: LyricsViewModel, modifier: Modifier) {
             textScale = 0.72f,
         )
     }
+    DisposableEffect(controller) { onDispose { controller.release() } }
     Box(modifier.clip(RoundedCornerShape(24.dp)).border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(24.dp))) {
         LyricsCanvas(controller, Modifier.fillMaxSize())
         Text(

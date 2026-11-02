@@ -9,6 +9,7 @@ import dev.lyricdrive.LyricDriveApp
  */
 class LyricsNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
-        (application as LyricDriveApp).graph.sessionObserver.start()
+        val app = application as LyricDriveApp
+        if (app.startupFailure == null) app.graph.sessionObserver.start()
     }
 }

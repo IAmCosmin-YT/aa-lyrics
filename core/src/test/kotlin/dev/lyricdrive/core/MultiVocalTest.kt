@@ -15,6 +15,18 @@ import org.junit.Test
 // All lyric text below is invented for the tests.
 class MultiVocalTest {
     @Test
+    fun `curly agent and timed backing markers are literal delimiters`() {
+        val lines = LrcParser.parse(
+            "[offset:+100]\n[00:01.00]{agent:v2}Main line\n[00:01.50]{bg}Backing line",
+        )
+        assertEquals(1, lines.size)
+        assertEquals(900L, lines.single().startMs)
+        assertEquals(Voice.SINGER_2, lines.single().voice)
+        assertEquals("Main line", lines.single().text)
+        assertEquals("Backing line", lines.single().backing!!.text)
+    }
+
+    @Test
     fun `voice prefixes and bg lines`() {
         val lines = LrcParser.parse(
             """

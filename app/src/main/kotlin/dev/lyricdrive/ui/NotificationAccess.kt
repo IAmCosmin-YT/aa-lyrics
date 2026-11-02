@@ -21,4 +21,12 @@ object NotificationAccess {
         } else {
             Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
         }
+
+    fun openSettings(context: Context) {
+        try {
+            context.startActivity(settingsIntent(context))
+        } catch (error: android.content.ActivityNotFoundException) {
+            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+    }
 }

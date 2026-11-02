@@ -38,6 +38,10 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
+        if ((application as LyricDriveApp).startupFailure != null) {
+            stopSelf()
+            return
+        }
         session = MediaSessionCompat(this, "LyricDriveMirror").apply {
             setCallback(ForwardingCallback())
         }
@@ -143,7 +147,7 @@ class LyricsMirrorMediaService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         scope.cancel()
-        session.release()
+        if (::session.isInitialized) session.release()
         super.onDestroy()
     }
 

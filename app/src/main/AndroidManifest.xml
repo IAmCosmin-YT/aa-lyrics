@@ -39,11 +39,19 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.LyricDrive">
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.RecoveryActivity"
+            android:exported="true"
+            android:process=":recovery"
+            android:hardwareAccelerated="false"
+            android:label="@string/recovery_title" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -9,10 +9,27 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /** Loads artwork URIs for players that publish a URI instead of a bitmap. */
 class ArtworkLoader(private val context: Context) {
-    private val cache = LruCache<String, Bitmap>(8)
+    private val cache = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
+    }
+
+    /** MediaSession bitmaps can be GPU-only; Palette and software car canvases need CPU pixels. */
+    suspend fun prepare(bitmap: Bitmap): Bitmap? = withContext(Dispatchers.Default) {
+        if (bitmap.isRecycled) return@withContext null
+        val scale = (512f / max(bitmap.width, bitmap.height)).coerceAtMost(1f)
+        val sized = if (scale < 1f) Bitmap.createScaledBitmap(
+            bitmap, (bitmap.width * scale).roundToInt().coerceAtLeast(1),
+            (bitmap.height * scale).roundToInt().coerceAtLeast(1), true,
+        ) else bitmap
+        if (sized.config == Bitmap.Config.HARDWARE) sized.copy(Bitmap.Config.ARGB_8888, false) else sized
+    }
+
+    fun trimMemory() = cache.evictAll()
 
     suspend fun load(uri: String): Bitmap? {
         cache.get(uri)?.let { return it }

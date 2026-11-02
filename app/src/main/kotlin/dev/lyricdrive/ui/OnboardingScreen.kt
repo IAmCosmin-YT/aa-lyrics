@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,9 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.lyricdrive.R
-import dev.lyricdrive.data.settings.BackgroundMode
-import dev.lyricdrive.ui.components.ThemeBackground
-import dev.lyricdrive.ui.theme.LyricPalette
 
 @Composable
 fun OnboardingScreen() {
@@ -37,7 +36,8 @@ fun OnboardingScreen() {
     val requestAudio = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     Box(Modifier.fillMaxSize()) {
-        ThemeBackground(BackgroundMode.ALBUM_FLUID, LyricPalette.DEFAULT, Modifier.fillMaxSize())
+        // Permission setup must be usable before any GPU effects have been exercised.
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF251343), Color(0xFF0E0820)))))
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),
             verticalArrangement = Arrangement.Center,
@@ -47,7 +47,7 @@ fun OnboardingScreen() {
             Text(stringResource(R.string.onboarding_body), color = Color.White.copy(alpha = 0.8f), fontSize = 17.sp)
             Spacer(Modifier.size(28.dp))
             Button(
-                onClick = { context.startActivity(NotificationAccess.settingsIntent(context)) },
+                onClick = { NotificationAccess.openSettings(context) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) { Text(stringResource(R.string.onboarding_grant), fontSize = 17.sp) }
             Spacer(Modifier.size(12.dp))

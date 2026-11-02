@@ -13,6 +13,22 @@ import dev.lyricdrive.service.LyricsMirrorMediaService
  * from the phone's Settings without a computer.
  */
 object CarDiagnostics {
+    /** Native GPU/process crashes bypass Java's uncaught-exception handler. */
+    fun checkPreviousNativeCrash(context: Context) {
+        if (android.os.Build.VERSION.SDK_INT < 30) return
+        runCatching {
+            val manager = context.getSystemService(android.app.ActivityManager::class.java)
+            val exit = manager.getHistoricalProcessExitReasons(context.packageName, 0, 1).firstOrNull() ?: return
+            val recovery = context.getSharedPreferences("recovery", Context.MODE_PRIVATE)
+            if (exit.reason != android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ||
+                exit.timestamp <= recovery.getLong("native_exit_handled", 0)) return
+            recovery.edit().putLong("native_exit_handled", exit.timestamp).putBoolean("pending_crash", true).commit()
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(KEY_ERROR, "Native process crash: ${exit.description.orEmpty()} (status ${exit.status}). Android ended the process outside the Java exception handler.")
+                .putLong(KEY_ERROR_AT, exit.timestamp).commit()
+        }
+    }
+
     enum class Step(val label: String) {
         SERVICE("Car service created"),
         SESSION("Session created"),

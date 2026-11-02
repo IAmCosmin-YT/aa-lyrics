@@ -23,11 +23,12 @@ object LrcParser {
     /** Fill duration for the last word of a line when no closing word tag exists. */
     const val LAST_WORD_FALLBACK_MS = 1_000L
 
-    private val LINE_TAG = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?]""")
+    private val LINE_TAG = Regex("""\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]""")
     private val WORD_TAG = Regex("""<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>""")
-    private val META_TAG = Regex("""^\[([A-Za-z#]+):(.*)]$""")
-    private val VOICE_PREFIX = Regex("""^(?:\{agent:([^}]+)}|v(\d+)\s*:)\s*""", RegexOption.IGNORE_CASE)
-    private val BG_PREFIX = Regex("""^\{bg}\s*""", RegexOption.IGNORE_CASE)
+    private val META_TAG = Regex("""^\[([A-Za-z#]+):(.*)\]$""")
+    // Android uses ICU, which rejects the bare closing braces tolerated by the desktop JDK.
+    private val VOICE_PREFIX = Regex("""^(?:\{agent:([^}]+)\}|v(\d+)\s*:)\s*""", RegexOption.IGNORE_CASE)
+    private val BG_PREFIX = Regex("""^\{bg\}\s*""", RegexOption.IGNORE_CASE)
     private val PAREN_GROUP = Regex("""\(([^()]*)\)""")
     private val SPACES = Regex("""\s+""")
 
