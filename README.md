@@ -4,6 +4,8 @@
 
 ## Download and install
 
+This app uses a special Layout for Android Auto. In order to use that, you will need to install it through [KingInstaller](https://github.com/fcaronte/KingInstaller/releases), so that it can be signed as it was installed from a verified store (Play Store).
+
 **[Download latest car APK](https://github.com/IAmCosmin-YT/aa-lyrics/releases/latest/download/LyricDrive-car.apk)** · **[Download latest media APK](https://github.com/IAmCosmin-YT/aa-lyrics/releases/latest/download/LyricDrive-media.apk)**
 
 Android 10 or newer. Download an APK on your phone and open it to install. **You do not need Android Studio or Gradle.** Choose one variant; both use the same app ID.
