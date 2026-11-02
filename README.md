@@ -15,7 +15,7 @@ Android 10 or newer. Download an APK on your phone and open it to install. **You
 
 Both variants show lyrics on your phone. [All releases and version history](https://github.com/IAmCosmin-YT/aa-lyrics/releases) · [Latest build status](https://github.com/IAmCosmin-YT/aa-lyrics/actions)
 
-The download links always select the latest successfully published build. CI publishes both APKs after tests and builds pass on the default branch. APKs are debug-signed testing builds; updates must use the same signing key. Android may require uninstalling a build signed with a different key, which removes its local data.
+The download links always select the latest successfully published build. Public APK version codes start above the earlier local test builds. CI publishes both APKs after tests and builds pass on the default branch. APKs are debug-signed testing builds; updates must use the same signing key. Android may require uninstalling a build signed with a different key, which removes its local data.
 
 ## First launch
 

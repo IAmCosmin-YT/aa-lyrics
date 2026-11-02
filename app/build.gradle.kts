@@ -15,7 +15,8 @@ android {
         targetSdk = 35
         // CI stamps the run number so the installed build can be identified in Settings.
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionCode = build
+        // Public downloads must update over the earlier local test APKs (codes 21–24).
+        versionCode = 1000 + build
         versionName = "1.0.$build"
     }
 
